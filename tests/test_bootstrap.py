@@ -1,6 +1,6 @@
 import pytest
 import numpy as np
-from bootstrap import bootstrap_sample, bootstrap_ci, r_squared
+from bootstrap import bootstrap_sample, bootstrap_ci, R_squared
 
 
 np.random.seed(22)
@@ -14,8 +14,8 @@ Y = X @ beta + np.random.normal(0, 3, size=X.shape[0])
 def test_bootstrap_integration():
     """Test that bootstrap_sample and bootstrap_ci work together"""
     
-    r2 = r_squared(X, Y)
-    boot_samples = bootstrap_sample(X, Y, r_squared, n_bootstrap=500)
+    r2 = R_squared(X, Y)
+    boot_samples = bootstrap_sample(X, Y, R_squared, n_bootstrap=500)
     cis = bootstrap_ci(boot_samples, alpha=0.05)
 
     assert True

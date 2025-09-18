@@ -29,7 +29,7 @@ def bootstrap_sample(X, y, compute_stat, n_bootstrap=1000):
 
     ....
     """
-    pass
+    raise NotImplementedError
 
 def bootstrap_ci(bootstrap_stats, alpha=0.05):
     """
@@ -49,7 +49,7 @@ def bootstrap_ci(bootstrap_stats, alpha=0.05):
     
     ....
     """
-    pass
+    raise NotImplementedError
 
 def R_squared(X, y):
     """
@@ -71,4 +71,4 @@ def R_squared(X, y):
     ValueError
         If X.shape[0] != len(y)
     """
-    pass
+    raise NotImplementedError
