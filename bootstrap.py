@@ -1,5 +1,3 @@
-import numpy as np
-
 """
 Strong linear model in regression
     Y = X beta + eps, where eps~ N(0, sigma^2 I)
@@ -56,7 +54,7 @@ def bootstrap_ci(bootstrap_stats, alpha=0.05):
 
     Returns
     -------
-    np.ndarray
+    tuple (float, float)
         1d array of length giving (lower_bound, upper_bound) of the CI
 
     ....
