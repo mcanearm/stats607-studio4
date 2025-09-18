@@ -1,3 +1,5 @@
+import numpy as np
+
 """
 Strong linear model in regression
     Y = X beta + eps, where eps~ N(0, sigma^2 I)
@@ -70,5 +72,31 @@ def R_squared(X, y):
     ------
     ValueError
         If X.shape[0] != len(y)
+        If X.ndim != 2
     """
-    raise NotImplementedError
+    
+    X = np.asarray(X)
+    y = np.asarray(y).reshape(-1)
+
+    if X.ndim != 2:
+        raise ValueError("X must be a 2D array.")
+    if X.shape[0] != y.shape[0]:
+        raise ValueError("Number of rows of X must match length of y.")
+
+    # Compute OLS via least squares
+    beta, *_ = np.linalg.lstsq(X, y, rcond=None)
+    y_hat = X @ beta
+
+    # Compute Sum of Squares Total and Sum of Squares Error
+    y_mean = np.mean(y)
+    sst = np.sum((y - y_mean) ** 2)
+    sse = np.sum((y - y_hat) ** 2)
+
+    # Handle degenerate case where y is constant
+    if sst == 0:
+        # If the model predicts perfectly, return 1.0; else 0.0
+        return float(sse == 0)
+
+    r2 = 1.0 - sse / sst
+    # Numerical guard: clamp to [0,1] due to floating-point noise
+    return float(np.clip(r2, 0.0, 1.0))

@@ -11,6 +11,16 @@ X = np.concat(
 beta = np.array([0, 2, -1, 3.5])
 Y = X @ beta + np.random.normal(0, 3, size=X.shape[0])
 
+
+def test_bootstrap_sample():
+    """
+    Test that bootstrap_sample outputs a valid length of numpy array
+    """
+    n_boot = 123
+    samples_boot = bootstrap_sample(X, Y, compute_stat=R_squared, n_bootstrap=n_boot)
+    assert isinstance(samples_boot, np.ndarray)
+    assert len(samples_boot) == n_boot
+
 def test_bootstrap_integration():
     """Test that bootstrap_sample and bootstrap_ci work together"""
     
@@ -19,3 +29,4 @@ def test_bootstrap_integration():
     cis = bootstrap_ci(boot_samples, alpha=0.05)
 
     assert True
+
