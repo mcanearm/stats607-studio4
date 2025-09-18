@@ -30,3 +30,13 @@ def test_bootstrap_integration():
 
     assert True
 
+
+@pytest.mark.parametrize("X, Y", [("test", Y), (X, "test"), ("test", "test")])
+def test_R_squared_type(X, Y):
+    with pytest.raises(TypeError, match="X and Y must be an ndarray"):
+        R_squared(X, Y)
+
+        
+def test_R_squared_shape():
+    assert len(R_squared(X, Y)) == 1
+   
