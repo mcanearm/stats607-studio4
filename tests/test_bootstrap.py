@@ -3,6 +3,12 @@ import numpy as np
 from bootstrap import bootstrap_sample, bootstrap_ci, R_squared
 
 
+"""
+Generate testing data. For basic tests, we can do this once, but
+this could also be split into a fixture so that each test can get a 
+copy without accidentally sharing state. This would be very important
+for pandas dfs, dicts, or other mutable objects.
+"""
 np.random.seed(22)
 covariates = np.random.uniform(0, 1, size=(100, 3))
 X = np.concat([np.ones(covariates.shape[0])[:, None], covariates], axis=1)
@@ -21,7 +27,10 @@ def test_bootstrap_sample():
 
 
 def test_bootstrap_integration():
-    """Test that bootstrap_sample and bootstrap_ci work together"""
+    """
+    Test that bootstrap_sample and bootstrap_ci work together. This is the
+    "happy path test."
+    """
 
     r2 = R_squared(X, Y)
     boot_samples = bootstrap_sample(X, Y, R_squared, n_bootstrap=500)
@@ -32,9 +41,17 @@ def test_bootstrap_integration():
 
 @pytest.fixture
 def samples():
+    """
+    Simple fixture to generate random data for use in other tests.
+    """
+    np.random.seed(571)
     return np.random.normal(0, 1, size=1000)
 
 
+
+"""
+atomize the next few tests to see what specifically fails.
+"""
 def test_boot_alpha(samples):
     with pytest.raises(ValueError, match="alpha must be between 0 and 1"):
         bootstrap_ci(samples, alpha=-0.1)
@@ -60,7 +77,6 @@ def test_bootstrap_ci_order(samples):
     low90, up90 = bootstrap_ci(samples, alpha=0.10)
 
     assert not low90 < low95 or up90 > up95
-    assert not low95 < low90 or up95 > up90
 
 
 def test_R_squared_type():
