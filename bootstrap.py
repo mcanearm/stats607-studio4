@@ -56,12 +56,26 @@ def bootstrap_ci(bootstrap_stats, alpha=0.05):
 
     Returns
     -------
-    tuple 
-        (lower_bound, upper_bound) of the CI
-    
+    np.ndarray
+        1d array of length giving (lower_bound, upper_bound) of the CI
+
     ....
     """
-    raise NotImplementedError
+    try:
+        if not (0 < alpha and alpha < 1):
+            raise ValueError("alpha must be between 0 and 1")
+        elif len(bootstrap_stats) == 0:
+            raise TypeError("length of bootstrap_stats is zero")
+        elif len(bootstrap_stats.shape) != 1:
+            raise TypeError("samples must be a 1D array-like")
+        elif len(bootstrap_stats) == 1:
+            raise ValueError("samples must contain at least two values")
+    except Exception as e:
+        raise e
+
+    alpha_bounds = np.array([alpha / 2, 1 - alpha / 2])
+    return tuple(np.quantile(bootstrap_stats, np.array(alpha_bounds)))
+
 
 def R_squared(X, y):
     """
@@ -86,10 +100,13 @@ def R_squared(X, y):
     """
     
     X = np.asarray(X)
-    y = np.asarray(y).reshape(-1)
-
+    y = np.asarray(y)
+    
+    dim_msg = "X must be a 2D array and y must be a 1D array."
     if X.ndim != 2:
-        raise ValueError("X must be a 2D array.")
+        raise ValueError(dim_msg)
+    if y.ndim != 1:
+        raise ValueError(dim_msg)
     if X.shape[0] != y.shape[0]:
         raise ValueError("Number of rows of X must match length of y.")
 

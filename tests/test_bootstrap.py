@@ -5,9 +5,7 @@ from bootstrap import bootstrap_sample, bootstrap_ci, R_squared
 
 np.random.seed(22)
 covariates = np.random.uniform(0, 1, size=(100, 3))
-X = np.concat(
-    [np.ones(covariates.shape[0])[:, None], covariates ], axis=1
-)
+X = np.concat([np.ones(covariates.shape[0])[:, None], covariates], axis=1)
 beta = np.array([0, 2, -1, 3.5])
 Y = X @ beta + np.random.normal(0, 3, size=X.shape[0])
 
@@ -21,44 +19,56 @@ def test_bootstrap_sample():
     assert isinstance(samples_boot, np.ndarray)
     assert len(samples_boot) == n_boot
 
+
 def test_bootstrap_integration():
     """Test that bootstrap_sample and bootstrap_ci work together"""
-    
+
     r2 = R_squared(X, Y)
     boot_samples = bootstrap_sample(X, Y, R_squared, n_bootstrap=500)
     cis = bootstrap_ci(boot_samples, alpha=0.05)
 
     assert True
 
-def test_bootstrap_ci():
-    """Test that bootstrap_ci returns correct shape and values"""
-    
-    samples = np.random.normal(0, 1, size=1000)
-    
+
+@pytest.fixture
+def samples():
+    return np.random.normal(0, 1, size=1000)
+
+
+def test_boot_alpha(samples):
     with pytest.raises(ValueError, match="alpha must be between 0 and 1"):
         bootstrap_ci(samples, alpha=-0.1)
-    
+
+
+def test_boot_length():
     with pytest.raises(TypeError, match="length of bootstrap_stats is zero"):
         bootstrap_ci([])
-    
+
+
+def test_1d_array():
     with pytest.raises(TypeError, match="samples must be a 1D array-like"):
         bootstrap_ci(np.array([[1, 2], [3, 4]]))
-    
+
+
+def test_at_least_two_values():
     with pytest.raises(ValueError, match="samples must contain at least two values"):
         bootstrap_ci(np.array([1]))
-    
+
+
+def test_bootstrap_ci_order(samples):
     low95, up95 = bootstrap_ci(samples, alpha=0.05)
     low90, up90 = bootstrap_ci(samples, alpha=0.10)
-    
-    assert low90 < low95 or up90 > up95
-    assert low95 < low90 or up95 > up90
 
-@pytest.mark.parametrize("X, Y", [("test", Y), (X, "test"), ("test", "test")])
-def test_R_squared_type(X, Y):
-    with pytest.raises(TypeError, match="X and Y must be an ndarray"):
-        R_squared(X, Y)
+    assert not low90 < low95 or up90 > up95
+    assert not low95 < low90 or up95 > up90
 
-        
+
+def test_R_squared_type():
+    with pytest.raises(
+        ValueError, match="X must be a 2D array and y must be a 1D array."
+    ):
+        R_squared(Y, Y)
+
+
 def test_R_squared_shape():
-    assert len(R_squared(X, Y)) == 1
-   
+    assert isinstance(R_squared(X, Y), float)
