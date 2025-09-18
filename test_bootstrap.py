@@ -88,3 +88,21 @@ def test_R_squared_type():
 
 def test_R_squared_shape():
     assert isinstance(R_squared(X, Y), float)
+    
+
+def test_R2_distribution():
+    covariates = np.random.uniform(0, 1, size=(100, 3))
+    X = np.concat([np.ones(covariates.shape[0])[:, None], covariates], axis=1)
+    Y = np.random.normal(0, 3, size=X.shape[0])
+
+    # no beta, under null R2 should be beta distributed
+    boot_samples = bootstrap_sample(X, Y, R_squared, n_bootstrap=10000)
+    beta_samples = np.random.beta(a=X.shape[1]/2, b=(X.shape[0]-X.shape[1]-1)/2, size=10000)
+    
+    assert np.isclose(np.mean(boot_samples), np.mean(beta_samples), atol=0.1)
+    assert np.isclose(np.var(boot_samples), np.var(beta_samples), atol=0.1)
+
+    diff = np.max(np.histogram(boot_samples, bins=5, density=True)[0] -
+                  np.histogram(beta_samples, bins=5, density=True)[0])
+
+    assert diff < 0.5
