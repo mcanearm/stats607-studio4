@@ -30,28 +30,33 @@ def test_bootstrap_integration():
 
     assert True
 
-def test_bootstrap_ci():
-    """Test that bootstrap_ci returns correct shape and values"""
+@pytest.fixture
+def samples():
+    return np.random.normal(0, 1, size=1000)        
     
-    samples = np.random.normal(0, 1, size=1000)
-    
+def test_boot_alpha(samples):
     with pytest.raises(ValueError, match="alpha must be between 0 and 1"):
         bootstrap_ci(samples, alpha=-0.1)
-    
+
+def test_boot_length():
     with pytest.raises(TypeError, match="length of bootstrap_stats is zero"):
         bootstrap_ci([])
     
+def test_1d_array():
     with pytest.raises(TypeError, match="samples must be a 1D array-like"):
         bootstrap_ci(np.array([[1, 2], [3, 4]]))
     
+def test_at_least_two_values():
     with pytest.raises(ValueError, match="samples must contain at least two values"):
         bootstrap_ci(np.array([1]))
     
+
+def test_bootstrap_ci_order(samples):
     low95, up95 = bootstrap_ci(samples, alpha=0.05)
     low90, up90 = bootstrap_ci(samples, alpha=0.10)
     
-    assert low90 < low95 or up90 > up95
-    assert low95 < low90 or up95 > up90
+    assert not low90 < low95 or up90 > up95
+    assert not low95 < low90 or up95 > up90
 
 @pytest.mark.parametrize("X, Y", [("test", Y), (X, "test"), ("test", "test")])
 def test_R_squared_type(X, Y):
