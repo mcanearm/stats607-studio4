@@ -19,3 +19,27 @@ def test_bootstrap_integration():
     cis = bootstrap_ci(boot_samples, alpha=0.05)
 
     assert True
+
+def test_bootstrap_ci():
+    """Test that bootstrap_ci returns correct shape and values"""
+    
+    samples = np.random.normal(0, 1, size=1000)
+    
+    with pytest.raises(ValueError, match="alpha must be between 0 and 1"):
+        bootstrap_ci(samples, alpha=-0.1)
+    
+    with pytest.raises(TypeError, match="length of bootstrap_stats is zero"):
+        bootstrap_ci([])
+    
+    with pytest.raises(TypeError, match="samples must be a 1D array-like"):
+        bootstrap_ci(np.array([[1, 2], [3, 4]]))
+    
+    with pytest.raises(ValueError, match="samples must contain at least two values"):
+        bootstrap_ci(np.array([1]))
+    
+    low95, up95 = bootstrap_ci(samples, alpha=0.05)
+    low90, up90 = bootstrap_ci(samples, alpha=0.10)
+    
+    assert low90 < low95 or up90 > up95
+    assert low95 < low90 or up95 > up90
+

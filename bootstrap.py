@@ -7,6 +7,8 @@ Strong linear model in regression
         R^2 ~ Beta(p/2, (n-p-1)/2)
 """
 
+import numpy as np
+
 
 def bootstrap_sample(X, y, compute_stat, n_bootstrap=1000):
     """
@@ -29,7 +31,15 @@ def bootstrap_sample(X, y, compute_stat, n_bootstrap=1000):
 
     ....
     """
-    raise NotImplementedError
+    bootstrap_stats = np.empty(n_bootstrap)
+    
+    for b in range(n_bootstrap):
+        idx = np.random.choice(X.shape[0], size=X.shape[0], replace=True)
+        Xtilde = X[idx]
+        ytilde = y[idx]
+        bootstrap_stats[b] = compute_stat(Xtilde, ytilde)
+
+    return bootstrap_stats
 
 def bootstrap_ci(bootstrap_stats, alpha=0.05):
     """
