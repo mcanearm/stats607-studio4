@@ -120,7 +120,9 @@ def test_R_squared_KS():
 
     covariates = np.random.uniform(0, 1, size=(n, p))
     X = np.concat([np.ones(n)[:, None], covariates], axis=1)
-    Y = np.random.normal(0, 3, n)
+    y_mean = 0
+    beta = np.concat([np.array(y_mean).reshape(-1), np.zeros(p)])    
+    Y = X @ beta + np.random.normal(0, 1, size=n)
 
     # no beta, under null R2 should be beta distributed
     boot_samples = bootstrap_sample(X, Y, R_squared, n_bootstrap=10000)
@@ -128,11 +130,22 @@ def test_R_squared_KS():
     assert n > p + 1, "Beta parameters must be positive (need n > p + 1)."
 
     # Theoretical Beta distribution parameters under the null
-    alpha = p / 2.0
-    beta_param = (n - p - 1) / 2.0
+    # https://stats.stackexchange.com/questions/130069/what-is-the-distribution-of-r2-in-linear-regression-under-the-null-hypothesis
+    alpha = (p-1) / 2.0
+    beta_param = (n - p) / 2.0
+
+    beta_samples = np.random.beta(a=alpha, b=beta_param, size=10000)
 
     # KS test: H0 = boot_samples ~ Beta(alpha, beta_param)
     stat, pval = kstest(boot_samples, 'beta', args=(alpha, beta_param))
+
+    if True:
+        import matplotlib.pyplot as plt
+        import seaborn as sns
+        sns.histplot(boot_samples, bins=30, stat='density', color='C0', label='Bootstrap R^2', alpha=0.5)
+        sns.histplot(beta_samples, bins=30, stat='density', color='C1', label=f'Beta({alpha:.2f}, {beta_param:.2f})', alpha=0.5)
+        plt.legend()
+        plt.show()
 
     # Expect a non-small p-value if distributions agree.
     assert pval > 0.01, (
