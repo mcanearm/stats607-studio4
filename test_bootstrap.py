@@ -1,5 +1,6 @@
 import pytest
 import numpy as np
+from scipy.stats import kstest
 from bootstrap import bootstrap_sample, bootstrap_ci, R_squared
 
 
@@ -12,8 +13,8 @@ for pandas dfs, dicts, or other mutable objects.
 np.random.seed(22)
 covariates = np.random.uniform(0, 1, size=(100, 3))
 X = np.concat([np.ones(covariates.shape[0])[:, None], covariates], axis=1)
-beta = np.array([0, 2, -1, 3.5])
-Y = X @ beta + np.random.normal(0, 3, size=X.shape[0])
+beta_coef = np.array([0, 2, -1, 3.5])
+Y = X @ beta_coef + np.random.normal(0, 3, size=X.shape[0])
 
 
 def test_bootstrap_sample():
@@ -90,7 +91,7 @@ def test_R_squared_shape():
     assert isinstance(R_squared(X, Y), float)
     
 
-def test_R2_distribution():
+def test_R_squared_distribution():
     covariates = np.random.uniform(0, 1, size=(100, 3))
     X = np.concat([np.ones(covariates.shape[0])[:, None], covariates], axis=1)
     Y = np.random.normal(0, 3, size=X.shape[0])
@@ -106,3 +107,35 @@ def test_R2_distribution():
                   np.histogram(beta_samples, bins=5, density=True)[0])
 
     assert diff < 0.5
+
+
+def test_R_squared_KS():
+    """
+    Validate that the bootstrap distribution of R^2 under the null (beta = 0)
+    is consistent with the known Beta(p/2, (n-p-1)/2) distribution
+    using Kolmogorov-Smirnov test.
+    """
+    n = 100
+    p = 3
+
+    covariates = np.random.uniform(0, 1, size=(n, p))
+    X = np.concat([np.ones(n)[:, None], covariates], axis=1)
+    Y = np.random.normal(0, 3, n)
+
+    # no beta, under null R2 should be beta distributed
+    boot_samples = bootstrap_sample(X, Y, R_squared, n_bootstrap=10000)
+
+    assert n > p + 1, "Beta parameters must be positive (need n > p + 1)."
+
+    # Theoretical Beta distribution parameters under the null
+    alpha = p / 2.0
+    beta_param = (n - p - 1) / 2.0
+
+    # KS test: H0 = boot_samples ~ Beta(alpha, beta_param)
+    stat, pval = kstest(boot_samples, 'beta', args=(alpha, beta_param))
+
+    # Expect a non-small p-value if distributions agree.
+    assert pval > 0.01, (
+        f"KS p-value too small (p={pval:.3g}, stat={stat:.3g}); "
+        f"bootstrap R^2 deviates from Beta({alpha:.2f}, {beta_param:.2f}) under the null"
+    )
