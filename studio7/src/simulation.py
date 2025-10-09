@@ -24,7 +24,7 @@ def generate_covariates(p, aspect_ratio, covariance):
 
 	n = math.ceil(p/aspect_ratio)
 
-	X = np.random.multivariate_normal(np.zeroes(p), covariance, n)
+	X = np.random.multivariate_normal(np.zeros(p), covariance, n)
 	return X
 
 
