@@ -1,0 +1,78 @@
+import numpy as np
+import pandas as pd
+import math
+
+def generate_covariates(p, aspect_ratio, covariance):
+	"""
+	Simulates the X, i.e. matrix of covariates from multivariate normal with mean 0 and given covariance
+
+	Arguments:
+	__________________________________________
+	p - type int
+	  - dimension of the data
+
+	aspect_ratio - type float
+			 - p/n
+
+	covariance - type numpy darray
+		   - the covariance matrix of the multivariate normal data
+
+	Returns:
+	___________________________________________
+	X - nxp numpy darray
+	"""
+
+	n = math.ceil(p/aspect_ratio)
+
+	X = np.random.multivariate_normal(np.zeroes(p), covariance, n)
+	return X
+
+
+def generate_data(p, aspect_ratio, covariance, degrees_of_freedom, SNR):
+	"""
+	Simulates the data (X,Y). Samples X from multivariate normal with mean 0 and given covariance. Y = X beta + Error 
+	
+	Arguments:
+	_____________________________________________
+	p - type int 
+	  - dimension of the data
+	
+	aspect ratio - type float
+		     - p/n
+
+	covariance - type numpy darray
+		   - the covariance matrix of the multivariate normal data
+
+	degrees_of_freedom - type int
+			  - degrees of freedom of t-distribution, measure of tail-heaviness
+
+
+	SNR - type float
+	    - the signal strength (beta'X'X beta)/sigma^2
+
+	Return:
+ 	______________________________________________
+	(Y,X) tuple of numpy darrays
+	"""
+
+	beta = np.random.multivariate_normal(np.zeros(p), np.identity(p))
+	beta = beta / np.linalg.norm(beta)
+	
+	n = math.ceil(p/aspect_ratio)
+
+	X = generate_covariates(p, aspect_ratio, covariance)
+
+	SNR_numerator = (beta.T @ X.T @ X @ beta)
+
+	sigma2 = SNR_numerator / SNR
+
+	sigma2 = (beta.T @ X.T @ X @ beta)/ (n*SNR)
+	sigma = math.sqrt(sigma2)
+
+	error = sigma * np.random.standard_t(degrees_of_freedom, n)
+
+	Y = X @ beta + error
+
+	return (Y,X)
+
+	
