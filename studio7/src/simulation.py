@@ -1,5 +1,4 @@
 import numpy as np
-import pandas as pd
 import math
 
 def generate_covariance_structure(rho, p):
@@ -86,12 +85,14 @@ def generate_data(p, aspect_ratio, covariance, degrees_of_freedom, SNR):
 	SNR_numerator = (beta.T @ X.T @ X @ beta)
 
 	sigma2 = SNR_numerator / SNR
-
 	sigma2 = (beta.T @ X.T @ X @ beta)/ (n*SNR)
 	sigma = math.sqrt(sigma2)
 
 	error = sigma * np.random.standard_t(degrees_of_freedom, n)
 
 	Y = X @ beta + error
+ 
+	# X,y is a more common order for tuples, so use that here
+	return (X, Y, beta)
 
-	return (Y,X)
+	

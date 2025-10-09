@@ -9,7 +9,17 @@
             "type": "debugpy",
             "request": "launch",
             "program": "${file}",
-            "console": "integratedTerminal"
+            "console": "integratedTerminal",
+        },
+        {
+            "name": "Run Simulation",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/studio7/src/estimators.py",
+            "console": "integratedTerminal",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}"
+            }
         }
-    ]
+    ],
 }
