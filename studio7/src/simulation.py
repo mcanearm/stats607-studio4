@@ -2,6 +2,27 @@ import numpy as np
 import pandas as pd
 import math
 
+def generate_covariance_structure(rho, p):
+	"""
+	Generates a covariance matrix with rho correlation between variables
+
+	Arguments:
+	__________________________________________
+	rho - type float
+	    - correlation between variables
+
+	p - type int
+	  - dimension of the data
+
+	Returns:
+	___________________________________________
+	covariance - pxp numpy darray
+	"""
+
+	covariance = np.full((p,p), rho)
+	np.fill_diagonal(covariance, 1)
+	return covariance
+
 def generate_covariates(p, aspect_ratio, covariance):
 	"""
 	Simulates the X, i.e. matrix of covariates from multivariate normal with mean 0 and given covariance
@@ -30,13 +51,13 @@ def generate_covariates(p, aspect_ratio, covariance):
 
 def generate_data(p, aspect_ratio, covariance, degrees_of_freedom, SNR):
 	"""
-	Simulates the data (X,Y). Samples X from multivariate normal with mean 0 and given covariance. Y = X beta + Error 
-	
+	Simulates the data (X,Y). Samples X from multivariate normal with mean 0 and given covariance. Y = X beta + Error
+
 	Arguments:
 	_____________________________________________
-	p - type int 
+	p - type int
 	  - dimension of the data
-	
+
 	aspect ratio - type float
 		     - p/n
 
@@ -57,7 +78,7 @@ def generate_data(p, aspect_ratio, covariance, degrees_of_freedom, SNR):
 
 	beta = np.random.multivariate_normal(np.zeros(p), np.identity(p))
 	beta = beta / np.linalg.norm(beta)
-	
+
 	n = math.ceil(p/aspect_ratio)
 
 	X = generate_covariates(p, aspect_ratio, covariance)
@@ -74,5 +95,3 @@ def generate_data(p, aspect_ratio, covariance, degrees_of_freedom, SNR):
 	Y = X @ beta + error
 
 	return (Y,X)
-
-	
