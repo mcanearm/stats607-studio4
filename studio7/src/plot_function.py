@@ -1,67 +1,62 @@
 import matplotlib.pyplot as plt
-import numpy as np
 import pandas as pd
+import seaborn as sns
 
 custom_rcparams = {
-    "text.usetex": True,  # render all text with LaTeX
+    "text.usetex": True, 
     "font.family": "serif",
-    "font.serif": ["Computer Modern Roman"],  # now this works via LaTeX
+    "font.serif": ["Computer Modern Roman"], 
 
-    "font.size": 14,
-    "axes.titlesize": 16,
-    "axes.labelsize": 14,
-    "xtick.labelsize": 12,
-    "ytick.labelsize": 12,
-    "legend.fontsize": 12,
+    "font.size": 15,
+    "legend.fontsize": 20,
+    "legend.title_fontsize": 20,
 
-    "lines.linewidth": 1.5,
-    "axes.linewidth": 0.5,
+    "lines.linewidth": 2,
+    "axes.linewidth": 1,
+    "axes.facecolor": "white",
+    
+    
+    "axes.grid": False,
 }
 
-def plot_figure(results, colors, path=None):
+colors = {"ols": "#1f77b4", "quantile": "#ff7f0e", "huber": "#2ca02c"}
+
+plt.rcParams.update(custom_rcparams)
+
+
+
+def plot_figure(results, colors, path=None, height=3, aspect=1):
+    plt.rcParams.update(custom_rcparams)
+
     if path is None:
         raise ValueError("You must provide a path to save the figure.")
     
     plt.rcParams.update(custom_rcparams)
     
-    colorols = colors['ols']
-    colorquantile = colors['quantile']
-    colorhuber = colors['huber']
+    temp_df = results.copy()
+    temp_df['corr'] = temp_df['corr'].apply(lambda x: f"Corr = {x}")
+    temp_df['snr'] = temp_df['snr'].apply(lambda x: f"SNR = {x}")
+
+    g = sns.FacetGrid(temp_df, row="snr", col="corr", margin_titles=True,
+                    sharey=True, sharex=True, height=height, aspect=aspect)
+
+    g.map_dataframe(sns.lineplot, x="dfs", y="mse", hue="method", style="method",
+                    palette=colors, markers=False, dashes=True, legend="full")
     
-    res_ols = results[results['method'] == 'ols']
-    res_quantile = results[results['method'] == 'quantile']
-    res_huber = results[results['method'] == 'huber']
-    
-    fig, ax = plt.subplots(3, 3, figsize=(10,10))
+    g.add_legend(title="Method")
 
-    ax[0, 2].set_xlabel('Degrees of Freedom')
-    ax[0, 2].set_ylabel('MSE')
+    g.figure.suptitle("Mse vs Degrees of Freedom for different setup", 
+                      y=1.02)
 
-    snrs = results['snr'].unique()
-    corrs = results['corr'].unique()
+    # Adjust layout and titles
 
-    # plot each (snr, corr) pair in the corresponding subplot and label rows/columns
-    for i, snr in enumerate(snrs):
-        for j, corr in enumerate(corrs):
-            sel_ols = res_ols[(res_ols['snr'] == snr) & (res_ols['corr'] == corr)]
-            sel_quant = res_quantile[(res_quantile['snr'] == snr) & (res_quantile['corr'] == corr)]
-            sel_hub = res_huber[(res_huber['snr'] == snr) & (res_huber['corr'] == corr)]
+    for ax in g.axes.flat:
+        ax.set_xlabel("")
+        ax.set_ylabel("")
 
-            ax[i, j].plot(sel_ols['dfs'], sel_ols['mse'], color=colorols, label='OLS')
-            ax[i, j].plot(sel_quant['dfs'], sel_quant['mse'], color=colorquantile, label='Quantile')
-            ax[i, j].plot(sel_hub['dfs'], sel_hub['mse'], color=colorhuber, label='Huber')
+    g.axes[2, 0].set_ylabel("MSE")
+    g.axes[2, 0].set_xlabel("Degrees of Freedom")
 
-            # label the rows with SNR and the columns with Corr
-            if j == 0:
-                ax[i, j].set_ylabel(f'SNR = {snr}', rotation=90, labelpad=10)
-            if i == len(snrs) - 1:
-                ax[i, j].set_xlabel(f'Corr = {corr}')
-            #ax[i, j].set_title(f'SNR: {snr}, Corr: {corr}')
-
-
-    handles, labels = ax[0, 0].get_legend_handles_labels()
-    fig.legend(handles, labels, loc='upper center', bbox_to_anchor=(0.5, 1.02), ncol=3, fontsize='medium')
-    plt.suptitle('MSE vs Degrees of Freedom for Different setups', fontsize=16)
-    plt.tight_layout()
-    
-    plt.savefig(path, dpi=300, bbox_inches='tight')
+    g.set_titles(col_template="{col_name}", row_template="{row_name}")
+    g.figure.subplots_adjust(wspace=0.1, hspace=0.1)
+    plt.savefig(path, bbox_inches='tight', dpi=300)
