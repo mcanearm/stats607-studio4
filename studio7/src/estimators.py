@@ -3,6 +3,8 @@ import textwrap
 from sklearn.linear_model import LinearRegression, QuantileRegressor, HuberRegressor
 from sklearn.metrics import mean_squared_error, r2_score
 from studio7.src.simulation import generate_data
+from scipy import stats
+from studio7.src.simulation import make_positive_definite
 
 
 class SimulationResult:
@@ -17,12 +19,15 @@ class SimulationResult:
         self.r2 = np.array([res["r2"] for res in result_set])
         self.predictions = np.array([res["predictions"] for res in result_set])
         self.true_betas = np.array([res["true_beta"] for res in result_set])
+        self.se_beta = np.array([res["se_beta"] for res in result_set])
+        self.N = np.array([res["N"] for res in result_set])
+        self.p = len(self.true_betas[0])
 
     def __str__(self):
         rmse_ci_str = f"RMSE: {self._ci_string(self.rmse)}"
         r2_ci_str = f"R2: {self._ci_string(self.r2)}"
         start_text = f"{'-' * 40}\nSim Result: {self.name}\nN_sim: {len(self.r2)}"
-        coverage = f"Coverage (95%): {np.mean(self.calculate_coverage()):0.3f}"
+        coverage = f"Coverage (95%): {self.calculate_coverage()}"
         str_components = [start_text, rmse_ci_str, r2_ci_str, coverage]
         text_out = "\n".join(str_components)
         text_out += f"\n{'-' * 40}"
@@ -31,14 +36,17 @@ class SimulationResult:
 
     @staticmethod
     def _ci_string(v):
-        return f"({np.percentile(v, 2.5):0.3f}, {np.percentile(v, 97.5):0.3f})"
+        return f"({np.percentile(v, 2.5):0.3f}, {np.percentile(v, 97.5)})"
 
     def calculate_coverage(self, alpha=0.05):
         """Calculate coverage of the true values according to alpha using quantiles"""
+        t_stat = stats.t.ppf(1 - alpha / 2, df=self.N - 1)
+        lower = self.beta_hat - t_stat[:, None] * self.se_beta
+        upper = self.beta_hat + t_stat[:, None] * self.se_beta
 
-        self
-
-        coverage = np.mean((self.true_betas >= lower) & (self.true_betas <= upper), axis=0)
+        coverage = np.mean(
+            (self.true_betas >= lower) & (self.true_betas <= upper), axis=0
+        )
         return coverage
 
 
@@ -58,14 +66,10 @@ def run_simulation(estimator_class, n_sim=1000, **data_params):
         r2 = r2_score(y, preds)
 
         N = X.shape[0]
-        X_with_intercept = np.empty(shape=(N, p), dtype=np.dtype("float"))
-        X_with_intercept[:, 0] = 1
-        X_with_intercept[:, 1:p] = X[:, 1:]
+        sigma_hat = np.sum((y - preds) ** 2) / (N - p)
 
-        sigma_hat = np.sum((y - preds) ** 2)/(N-p)
-        se_beta = np.sqrt(sigma_hat) * np.linalg.inv(X_with_intercept.T @ X_with_intercept)
-        se_beta[np.diag_indices_from(se_beta)]
-        
+        xtx_inv = make_positive_definite(np.linalg.inv(X.T @ X))
+        se_beta = np.diagonal(np.sqrt(sigma_hat * xtx_inv))
 
         return {
             "predictions": preds,
@@ -73,19 +77,22 @@ def run_simulation(estimator_class, n_sim=1000, **data_params):
             "rmse": rmse,
             "r2": r2,
             "true_beta": beta,
+            "se_beta": se_beta,
+            "N": N,
             **data_params,
         }
 
 
-p = 30
-print(
-    run_simulation(
-        LinearRegression,
-        n_sim=200,
-        p=p,
-        aspect_ratio=0.5,
-        covariance=np.identity(p),
-        degrees_of_freedom=5,
-        SNR=5,
-    )
-)
+if __name__ == "__main__":
+    p = 10
+    for regressor in [LinearRegression, QuantileRegressor, HuberRegressor]:
+        sim_result = run_simulation(
+            regressor,
+            n_sim=200,
+            p=p,
+            aspect_ratio=0.2,
+            covariance=np.identity(p),
+            degrees_of_freedom=100,
+            SNR=2.0,
+        )
+        print(sim_result)
