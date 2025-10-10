@@ -1,6 +1,6 @@
+import pickle as pkl
 import textwrap
 from pathlib import Path
-import pickle as pkl
 
 import numpy as np
 import pandas as pd
@@ -13,20 +13,21 @@ from studio7.src.simulation import generate_data
 
 def _get_estimator_name(estimator_class):
     estimator_name = {
-            LinearRegression: "OLS",
-            QuantileRegressor: "QR",
-            HuberRegressor: "Huber",
-        }
+        LinearRegression: "OLS",
+        QuantileRegressor: "QR",
+        HuberRegressor: "Huber",
+    }
     try:
         return estimator_name[estimator_class]
     except KeyError:
         # handle case when we use a partial function to set parameters
         try:
             return estimator_name[estimator_class.func]
-        except (KeyError):
+        except KeyError:
             raise ValueError(
                 "Estimator not supported: options are LinearRegression, QuantileRegressor, HuberRegressor"
             )
+
 
 class SimulationResult(object):
     def __init__(self, estimator, result_set) -> None:
@@ -39,10 +40,10 @@ class SimulationResult(object):
         if "_df" not in self.__dict__:
             raise AttributeError(f"{name} not found")
         return getattr(self._df, name)
-    
+
     def __str__(self):
         start_text = f"{'-' * 40}\nSim Result: {self.name}\nN_sim: {len(self.r2)}"
-        param_text = f"p: {self.p[0]}, aspect_ratio: {self.aspect_ratio[0]}, degrees_of_freedom: {self.degrees_of_freedom[0]}, SNR: {self.SNR[0]}, rho: {self.rho[0]:0.2f}"
+        param_text = f"p: {self.p[0]}, aspect_ratio: {self.aspect_ratio[0]}, degrees_of_freedom: {self.degrees_of_freedom[0]}, SNR: {self.SNR[0]}, rho: {self.rho[0]}"
         rmse_ci_str = f"RMSE: {self._ci_string(self.rmse)}"
         r2_ci_str = f"R2: {self._ci_string(self.r2)}"
         coverage = f"Coverage (95%): {self.calculate_coverage()}"
@@ -77,9 +78,18 @@ class SimulationResult(object):
 
     @property
     def filename(self):
-        return Path(
-            f"{self.name}/p={self.p[0]}_snr={self.SNR[0]}_df={self.degrees_of_freedom[0]}_ar={self.aspect_ratio[0]}.pkl"
+        return self._construct_filepath(
+            self.name,
+            self.p[0],
+            self.SNR[0],
+            self.degrees_of_freedom[0],
+            self.aspect_ratio[0],
+            self.rho[0]
         )
+
+    @classmethod
+    def _construct_filepath(cls, name, p, snr, df, ar, rho):
+        return Path(f"{name}/p={p:0.0f}_snr={snr:0.0f}_df={df:0.0f}_ar={ar:0.2f}_rho={rho:0.2f}.pkl")
 
     @classmethod
     def load(cls, input_filepath: Path):
@@ -87,7 +97,9 @@ class SimulationResult(object):
             return pkl.load(f)
 
 
-def run_simulation(estimator_class, n_sim=1000, **data_params) -> SimulationResult | dict:
+def run_simulation(
+    estimator_class, n_sim=1000, **data_params
+) -> SimulationResult | dict:
     """
     Run the simulations for a given estimator class. Notably, we're just using
     the default parameters on each estimator class.
@@ -103,9 +115,9 @@ def run_simulation(estimator_class, n_sim=1000, **data_params) -> SimulationResu
         p = data_params["p"]  # this should error if p not provided
         try:
             # get any off diagonal term, they should be the same in our setup
-            rho = float(data_params["covariance"][0, 1]) 
+            rho = float(data_params["covariance"][0, 1])
         except IndexError:
-            rho = np.nan 
+            rho = np.nan
         X, y, beta = generate_data(**data_params)
         model = estimator_class()
         preds = model.fit(X, y).predict(X)
