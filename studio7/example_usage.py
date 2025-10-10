@@ -5,6 +5,7 @@
 import math
 from functools import partial
 from itertools import product
+from pathlib import Path
 
 from sklearn.linear_model import HuberRegressor, LinearRegression, QuantileRegressor
 
@@ -25,13 +26,13 @@ if __name__ == "__main__":
     snr = [1, 5, 10]
     regressors = [
         LinearRegression,
-        QuantileRegressor,
+        partial(QuantileRegressor, alpha=0),
         partial(HuberRegressor, max_iter=500),
     ]
 
-    scenarios = product(t_df, ar, corr, snr, regressors)
+    scenarios = list(product(t_df, ar, corr, snr, regressors))
 
-    for scenario in scenarios:
+    for (i, scenario) in enumerate(scenarios):
         p = 5  # for now, hard code p
         _df, _ar, _corr, _snr, _regressor = scenario
         cov_mat = generate_covariance_structure(_corr, p)
@@ -44,6 +45,7 @@ if __name__ == "__main__":
             degrees_of_freedom=_df,
             SNR=_snr,
         )
+        print(f"Completed {i+1} of {len(scenarios)} scenarios")
         print(sim_result)
         output_dir = Path("./sim_outputs/")
         sim_result.save(output_dir)

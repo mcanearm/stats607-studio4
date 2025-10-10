@@ -99,10 +99,13 @@ def run_simulation(estimator_class, n_sim=1000, **data_params) -> SimulationResu
         ]
         return SimulationResult(estimator_class, outputs)
     else:
-        # hacky increase to max iterations after seeing some issues with convergence
         random_state = (np.random.get_state(),)
         p = data_params["p"]  # this should error if p not provided
-        rho = float(data_params["covariance"][0, 1]) # get any off diagonal term, they should be the same in our setup
+        try:
+            # get any off diagonal term, they should be the same in our setup
+            rho = float(data_params["covariance"][0, 1]) 
+        except IndexError:
+            rho = np.nan 
         X, y, beta = generate_data(**data_params)
         model = estimator_class()
         preds = model.fit(X, y).predict(X)
