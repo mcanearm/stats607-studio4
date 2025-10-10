@@ -28,19 +28,18 @@ def test_simulation_run(regressor, p):
         SNR=2.0,
     )
     assert sim_result
-    # assert sim_result.estimator_name == regressor.__name__
-    # assert sim_result.n_simulations == 200
-    # assert sim_result.p == p
-    # assert sim_result.aspect_ratio == 0.2
-    # assert sim_result.covariance.shape == (p, p)
-    # assert sim_result.degrees_of_freedom == 100
-    # assert sim_result.SNR == 2.0
-    # assert len(sim_result.outputs) == 200
-    # for output in sim_result.outputs:
-    #     assert "predictions" in output
-    #     assert "beta_hat" in output
-    #     assert "rmse" in output
-    #     assert "r2" in output
-    #     assert "true_beta" in output
-    #     assert "se_beta" in output
-    #     assert "N" in output
+    assert sim_result.name in ["OLS", "QR", "Huber"]
+    assert (sim_result.p == p).all()
+
+    
+def test_simulation_print():
+    sim_result = run_simulation(
+        LinearRegression,
+        n_sim=5,
+        p=2,
+        aspect_ratio=0.2,
+        covariance=np.identity(2),
+        degrees_of_freedom=100,
+        SNR=2.0,
+    )
+    print(sim_result)

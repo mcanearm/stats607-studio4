@@ -37,12 +37,16 @@ class SimulationResult(object):
 
     def calculate_coverage(self, alpha=0.05):
         """Calculate coverage of the true values according to alpha using quantiles"""
+        beta_hat_estimates = np.stack(self.beta_hat)
+        se_betas = np.stack(self.se_beta)
+        true_beta = np.stack(self.true_beta)
+
         t_stat = stats.t.ppf(1 - alpha / 2, df=self.N - 1)
-        lower = self.beta_hat - t_stat[:, None] * self.se_beta
-        upper = self.beta_hat + t_stat[:, None] * self.se_beta
+        lower = beta_hat_estimates - t_stat[:, None] * se_betas
+        upper = beta_hat_estimates + t_stat[:, None] * se_betas
 
         coverage = np.mean(
-            (self.true_betas >= lower) & (self.true_betas <= upper), axis=0
+            (true_beta >= lower) & (true_beta <= upper), axis=0
         )
         return coverage
 
