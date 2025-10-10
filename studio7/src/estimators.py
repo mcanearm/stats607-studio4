@@ -52,6 +52,10 @@ class SimulationResult(object):
 
 
 def run_simulation(estimator_class, n_sim=1000, **data_params):
+    """
+    Run the simulations for a given estimator class. Notably, we're just using
+    the default parameters on each estimator class.
+    """
     if n_sim > 1:
         outputs = [
             run_simulation(estimator_class, n_sim=1, **data_params)
@@ -59,6 +63,7 @@ def run_simulation(estimator_class, n_sim=1000, **data_params):
         ]
         return SimulationResult(estimator_class, outputs)
     else:
+        random_state = np.random.get_state(),
         p = data_params["p"]  # this should error if p not provided
         X, y, beta = generate_data(**data_params)
         model = estimator_class()
@@ -74,6 +79,7 @@ def run_simulation(estimator_class, n_sim=1000, **data_params):
         se_beta = np.sqrt(sigma_hat * np.diagonal(xtx_inv))
 
         return {
+            "random_state": random_state,
             "predictions": preds,
             "beta_hat": beta_hat,
             "rmse": rmse,
