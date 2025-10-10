@@ -7,6 +7,7 @@ logging.basicConfig(level=logging.INFO)
 
 np.random.seed(0)
 
+
 def generate_covariance_structure(rho, p):
     """
     Generates a covariance matrix with rho correlation between variables
@@ -29,67 +30,35 @@ def generate_covariance_structure(rho, p):
     return covariance
 
 
-def make_positive_definite(X, min_eig=1e-6):
-    """
-    Force a symmetric matrix X to be positive definite by adjusting its eigenvalues.
-
-    Parameters
-    ----------
-    X : np.ndarray
-        A square (n x n) symmetric matrix.
-    min_eig : float, optional
-        Minimum eigenvalue threshold. Eigenvalues smaller than this are lifted.
-
-    Returns
-    -------
-    X_pd : np.ndarray
-        A symmetric positive definite version of X.
-    """
-    # Ensure symmetry (important for numerical stability)
-    X_sym = (X + X.T) / 2
-
-    # Eigen-decomposition
-    eigvals, eigvecs = np.linalg.eigh(X_sym)
-
-    # Lift eigenvalues below the threshold
-    eigvals[eigvals < min_eig] = min_eig
-
-    # Reconstruct the positive definite matrix
-    X_pd = eigvecs @ np.diag(eigvals) @ eigvecs.T
-
-    # Enforce symmetry again for good measure
-    X_pd = (X_pd + X_pd.T) / 2
-
-    return X_pd
-
-
 def generate_covariates(p, aspect_ratio, covariance):
-	"""
-	Simulates the X, i.e. matrix of covariates from multivariate normal with mean 0 and given covariance
+    """
+    Simulates the X, i.e. matrix of covariates from multivariate normal with mean 0 and given covariance
 
-	Arguments:
-	__________________________________________
-	p - type int
-	  - dimension of the data
+    Arguments:
+    __________________________________________
+    p - type int
+      - dimension of the data
 
-	aspect_ratio - type float
-			 - p/n
+    aspect_ratio - type float
+                     - p/n
 
-	covariance - type numpy darray
-		   - the covariance matrix of the multivariate normal data
+    covariance - type numpy darray
+               - the covariance matrix of the multivariate normal data
 
-	Returns:
-	___________________________________________
-	X - nxp numpy darray
-	"""
+    Returns:
+    ___________________________________________
+    X - nxp numpy darray
+    """
 
-	n = math.ceil(p/aspect_ratio)
+    n = math.ceil(p / aspect_ratio)
 
-	X = np.random.multivariate_normal(np.zeros(p), covariance, n)
-	return X
+    X = np.random.multivariate_normal(np.zeros(p), covariance, n)
+    return X
 
 
-def generate_data(p, aspect_ratio, covariance, degrees_of_freedom, SNR):
+def generate_data(
+    p=5, aspect_ratio=0.2, covariance=np.eye(5), degrees_of_freedom=5, SNR=0.5
+):
     """
     Simulates the data (X,Y). Samples X from multivariate normal with mean 0 and given covariance. Y = X beta + Error
 
