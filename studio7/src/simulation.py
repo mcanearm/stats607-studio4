@@ -5,6 +5,8 @@ import logging
 logging.basicConfig(level=logging.INFO)
 
 
+np.random.seed(0)
+
 def generate_covariance_structure(rho, p):
     """
     Generates a covariance matrix with rho correlation between variables
