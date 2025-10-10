@@ -30,40 +30,6 @@ def generate_covariance_structure(rho, p):
     return covariance
 
 
-def make_positive_definite(X, min_eig=1e-6):
-    """
-    Force a symmetric matrix X to be positive definite by adjusting its eigenvalues.
-
-    Parameters
-    ----------
-    X : np.ndarray
-        A square (n x n) symmetric matrix.
-    min_eig : float, optional
-        Minimum eigenvalue threshold. Eigenvalues smaller than this are lifted.
-
-    Returns
-    -------
-    X_pd : np.ndarray
-        A symmetric positive definite version of X.
-    """
-    # Ensure symmetry (important for numerical stability)
-    X_sym = (X + X.T) / 2
-
-    # Eigen-decomposition
-    eigvals, eigvecs = np.linalg.eigh(X_sym)
-
-    # Lift eigenvalues below the threshold
-    eigvals[eigvals < min_eig] = min_eig
-
-    # Reconstruct the positive definite matrix
-    X_pd = eigvecs @ np.diag(eigvals) @ eigvecs.T
-
-    # Enforce symmetry again for good measure
-    X_pd = (X_pd + X_pd.T) / 2
-
-    return X_pd
-
-
 def generate_covariates(p, aspect_ratio, covariance):
     """
     Simulates the X, i.e. matrix of covariates from multivariate normal with mean 0 and given covariance

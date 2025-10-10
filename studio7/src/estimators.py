@@ -1,5 +1,6 @@
 import textwrap
 from pathlib import Path
+import pickle as pkl
 
 import numpy as np
 import pandas as pd
@@ -7,22 +8,25 @@ from scipy import stats
 from sklearn.linear_model import HuberRegressor, LinearRegression, QuantileRegressor
 from sklearn.metrics import mean_squared_error, r2_score
 
-from studio7.src.simulation import generate_data, make_positive_definite
+from studio7.src.simulation import generate_data
 
 
 def _get_estimator_name(estimator_class):
+    estimator_name = {
+            LinearRegression: "OLS",
+            QuantileRegressor: "QR",
+            HuberRegressor: "Huber",
+        }
     try:
-        estimator_name = {
-            LinearRegression: "ols",
-            QuantileRegressor: "quantile",
-            HuberRegressor: "huber",
-        }[estimator_class]
-        return estimator_name
+        return estimator_name[estimator_class]
     except KeyError:
-        raise ValueError(
-            "Estimator not supported: options are LinearRegression, QuantileRegressor, HuberRegressor"
-        )
-
+        # handle case when we use a partial function to set parameters
+        try:
+            return estimator_name[estimator_class.func]
+        except (KeyError):
+            raise ValueError(
+                "Estimator not supported: options are LinearRegression, QuantileRegressor, HuberRegressor"
+            )
 
 class SimulationResult(object):
     def __init__(self, estimator, result_set) -> None:
@@ -31,14 +35,18 @@ class SimulationResult(object):
 
     def __getattr__(self, name):
         # delegate all other attributes/methods to the underlying DataFrame
+        # Prevent recursion during unpickling or before _df exists
+        if "_df" not in self.__dict__:
+            raise AttributeError(f"{name} not found")
         return getattr(self._df, name)
-
+    
     def __str__(self):
+        start_text = f"{'-' * 40}\nSim Result: {self.name}\nN_sim: {len(self.r2)}"
+        param_text = f"p: {self.p[0]}, aspect_ratio: {self.aspect_ratio[0]}, degrees_of_freedom: {self.degrees_of_freedom[0]}, SNR: {self.SNR[0]}"
         rmse_ci_str = f"RMSE: {self._ci_string(self.rmse)}"
         r2_ci_str = f"R2: {self._ci_string(self.r2)}"
-        start_text = f"{'-' * 40}\nSim Result: {self.name}\nN_sim: {len(self.r2)}"
         coverage = f"Coverage (95%): {self.calculate_coverage()}"
-        str_components = [start_text, rmse_ci_str, r2_ci_str, coverage]
+        str_components = [start_text, param_text, rmse_ci_str, r2_ci_str, coverage]
         text_out = "\n".join(str_components)
         text_out += f"\n{'-' * 40}"
 
@@ -46,7 +54,7 @@ class SimulationResult(object):
 
     @staticmethod
     def _ci_string(v):
-        return f"({np.percentile(v, 2.5):0.3f}, {np.percentile(v, 97.5)})"
+        return f"({np.percentile(v, 2.5):0.3f}, {np.percentile(v, 97.5):0.3f})"
 
     def calculate_coverage(self, alpha=0.05):
         """Calculate coverage of the true values according to alpha using quantiles"""
@@ -61,23 +69,22 @@ class SimulationResult(object):
         coverage = np.mean((true_beta >= lower) & (true_beta <= upper), axis=0)
         return coverage
 
-    def save(self, outpur_dir: Path):
-        output_filename = (
-            outpur_dir
-            / f"{self.name}/p={self.p[0]}_snr={self.SNR[0]}_df={self.degrees_of_freedom[0]}_ar={self.aspect_ratio[0]}.csv"
+    def save(self, output_dir: Path):
+        output_filename = output_dir / self.filename
+        output_filename.parent.mkdir(parents=True, exist_ok=True)
+        with open(output_filename, "wb") as f:
+            pkl.dump(self, f)
+
+    @property
+    def filename(self):
+        return Path(
+            f"{self.name}/p={self.p[0]}_snr={self.SNR[0]}_df={self.degrees_of_freedom[0]}_ar={self.aspect_ratio[0]}.pkl"
         )
-        self._df.to_csv(output_filename, index=False)
 
     @classmethod
     def load(cls, input_filepath: Path):
-        df = pd.read_csv(input_filepath)
-        estimator_name = input_filepath.stem.split("_")[0]
-        estimator_class = {
-            "ols": LinearRegression,
-            "quantile": QuantileRegressor,
-            "huber": HuberRegressor,
-        }[estimator_name]
-        return cls(estimator_class, df.to_dict(orient="records"))
+        with open(input_filepath, "rb") as f:
+            return pkl.load(f)
 
 
 def run_simulation(estimator_class, n_sim=1000, **data_params):
@@ -92,6 +99,10 @@ def run_simulation(estimator_class, n_sim=1000, **data_params):
         ]
         return SimulationResult(estimator_class, outputs)
     else:
+        # hacky increase to max iterations after seeing some issues with convergence
+        if estimator_class == HuberRegressor:
+            estimator_class = lambda: HuberRegressor(max_iter=500)
+
         random_state = (np.random.get_state(),)
         p = data_params["p"]  # this should error if p not provided
         X, y, beta = generate_data(**data_params)
@@ -106,7 +117,7 @@ def run_simulation(estimator_class, n_sim=1000, **data_params):
         N = X.shape[0]
         sigma_hat = np.sum((y - preds) ** 2) / (N - p)
 
-        xtx_inv = make_positive_definite(np.linalg.inv(X.T @ X))
+        xtx_inv = np.linalg.inv(X.T @ X)
         se_beta = np.sqrt(sigma_hat * np.diagonal(xtx_inv))
 
         return {
@@ -121,3 +132,17 @@ def run_simulation(estimator_class, n_sim=1000, **data_params):
             "N": N,
             **data_params,
         }
+
+
+if __name__ == "__main__":
+    # Simple test
+    sim_result = run_simulation(
+        LinearRegression,
+        n_sim=500,
+        p=5,
+        aspect_ratio=0.2,
+        covariance=np.identity(5),
+        degrees_of_freedom=100,
+        SNR=2.0,
+    )
+    print(sim_result)

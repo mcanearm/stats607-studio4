@@ -2,16 +2,16 @@
 示例：如何在 Studio 7 项目中进行导入和使用
 """
 import math
+from itertools import product
+from functools import partial
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import src.estimators as est
-import src.plot_function as plot
 from sklearn.linear_model import HuberRegressor, LinearRegression, QuantileRegressor
-from src import SimulationResult, generate_data, plot_figure, run_simulation
-from src.estimators import SimulationResult, generate_data, run_simulation
-from src.plot_function import plot_figure
+from studio7.src.simulation import generate_data, generate_covariance_structure
+from studio7.src.estimators import run_simulation
+from studio7.src.plot_function import plot_figure
 
 # 使用示例
 if __name__ == "__main__":
@@ -23,12 +23,23 @@ if __name__ == "__main__":
     ar = [0.2, 0.5, 0.8]
     corr = [0, 0.5, 0.9]
     snr = [1, 5, 10]
-    regressors = [LinearRegression, QuantileRegressor, HuberRegressor]
+    regressors = [LinearRegression, QuantileRegressor, partial(HuberRegressor, max_iter=500)]
 
-    # 运行仿真
-    result = run_simulation(LinearRegression, n_sim=10)
-    print(f"Simulation result: {result}")
+    scenarios = product(t_df, ar, corr, snr, regressors)
 
-    # 如果你需要使用其他常用的库
+    for scenario in scenarios:
+        p = 5  # for now, hard code p
+        _df, _ar, _corr, _snr, _regressor = scenario
+        cov_mat = generate_covariance_structure(_corr, p)
+        sim_result = run_simulation(
+            _regressor,
+            n_sim=n_sims,
+            p=p,
+            aspect_ratio=_ar,
+            covariance=cov_mat,
+            degrees_of_freedom=_df,
+            SNR=_snr,
+        )
+        print(sim_result)
+        sim_result.save("./sim_outputs/")
 
-    print("所有导入成功！")
