@@ -42,7 +42,7 @@ class SimulationResult(object):
     
     def __str__(self):
         start_text = f"{'-' * 40}\nSim Result: {self.name}\nN_sim: {len(self.r2)}"
-        param_text = f"p: {self.p[0]}, aspect_ratio: {self.aspect_ratio[0]}, degrees_of_freedom: {self.degrees_of_freedom[0]}, SNR: {self.SNR[0]}"
+        param_text = f"p: {self.p[0]}, aspect_ratio: {self.aspect_ratio[0]}, degrees_of_freedom: {self.degrees_of_freedom[0]}, SNR: {self.SNR[0]}, rho: {self.rho[0]:0.2f}"
         rmse_ci_str = f"RMSE: {self._ci_string(self.rmse)}"
         r2_ci_str = f"R2: {self._ci_string(self.r2)}"
         coverage = f"Coverage (95%): {self.calculate_coverage()}"
@@ -87,7 +87,7 @@ class SimulationResult(object):
             return pkl.load(f)
 
 
-def run_simulation(estimator_class, n_sim=1000, **data_params):
+def run_simulation(estimator_class, n_sim=1000, **data_params) -> SimulationResult | dict:
     """
     Run the simulations for a given estimator class. Notably, we're just using
     the default parameters on each estimator class.
@@ -100,11 +100,9 @@ def run_simulation(estimator_class, n_sim=1000, **data_params):
         return SimulationResult(estimator_class, outputs)
     else:
         # hacky increase to max iterations after seeing some issues with convergence
-        if estimator_class == HuberRegressor:
-            estimator_class = lambda: HuberRegressor(max_iter=500)
-
         random_state = (np.random.get_state(),)
         p = data_params["p"]  # this should error if p not provided
+        rho = float(data_params["covariance"][0, 1]) # get any off diagonal term, they should be the same in our setup
         X, y, beta = generate_data(**data_params)
         model = estimator_class()
         preds = model.fit(X, y).predict(X)
@@ -130,6 +128,7 @@ def run_simulation(estimator_class, n_sim=1000, **data_params):
             "true_beta": beta,
             "se_beta": se_beta,
             "N": N,
+            "rho": rho,
             **data_params,
         }
 
