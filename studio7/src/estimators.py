@@ -1,19 +1,32 @@
-import numpy as np
 import textwrap
-from sklearn.linear_model import LinearRegression, QuantileRegressor, HuberRegressor
-from sklearn.metrics import mean_squared_error, r2_score
-from studio7.src.simulation import generate_data
-from scipy import stats
-from studio7.src.simulation import make_positive_definite
+from pathlib import Path
+
+import numpy as np
 import pandas as pd
+from scipy import stats
+from sklearn.linear_model import HuberRegressor, LinearRegression, QuantileRegressor
+from sklearn.metrics import mean_squared_error, r2_score
+
+from studio7.src.simulation import generate_data, make_positive_definite
+
+
+def _get_estimator_name(estimator_class):
+    try:
+        estimator_name = {
+            LinearRegression: "ols",
+            QuantileRegressor: "quantile",
+            HuberRegressor: "huber",
+        }[estimator_class]
+        return estimator_name
+    except KeyError:
+        raise ValueError(
+            "Estimator not supported: options are LinearRegression, QuantileRegressor, HuberRegressor"
+        )
+
 
 class SimulationResult(object):
     def __init__(self, estimator, result_set) -> None:
-        self.name = {
-            LinearRegression: "OLS",
-            QuantileRegressor: "QR",
-            HuberRegressor: "Huber",
-        }[estimator]
+        self.name = _get_estimator_name(estimator)
         self._df = pd.DataFrame(result_set)
 
     def __getattr__(self, name):
@@ -45,10 +58,26 @@ class SimulationResult(object):
         lower = beta_hat_estimates - t_stat[:, None] * se_betas
         upper = beta_hat_estimates + t_stat[:, None] * se_betas
 
-        coverage = np.mean(
-            (true_beta >= lower) & (true_beta <= upper), axis=0
-        )
+        coverage = np.mean((true_beta >= lower) & (true_beta <= upper), axis=0)
         return coverage
+
+    def save(self, outpur_dir: Path):
+        output_filename = (
+            outpur_dir
+            / f"{self.name}/p={self.p[0]}_snr={self.SNR[0]}_df={self.degrees_of_freedom[0]}_ar={self.aspect_ratio[0]}.csv"
+        )
+        self._df.to_csv(output_filename, index=False)
+
+    @classmethod
+    def load(cls, input_filepath: Path):
+        df = pd.read_csv(input_filepath)
+        estimator_name = input_filepath.stem.split("_")[0]
+        estimator_class = {
+            "ols": LinearRegression,
+            "quantile": QuantileRegressor,
+            "huber": HuberRegressor,
+        }[estimator_name]
+        return cls(estimator_class, df.to_dict(orient="records"))
 
 
 def run_simulation(estimator_class, n_sim=1000, **data_params):
@@ -63,7 +92,7 @@ def run_simulation(estimator_class, n_sim=1000, **data_params):
         ]
         return SimulationResult(estimator_class, outputs)
     else:
-        random_state = np.random.get_state(),
+        random_state = (np.random.get_state(),)
         p = data_params["p"]  # this should error if p not provided
         X, y, beta = generate_data(**data_params)
         model = estimator_class()
@@ -72,6 +101,8 @@ def run_simulation(estimator_class, n_sim=1000, **data_params):
         rmse = np.sqrt(mean_squared_error(y, preds))
         r2 = r2_score(y, preds)
 
+        name = _get_estimator_name(estimator_class)  # just to validate
+
         N = X.shape[0]
         sigma_hat = np.sum((y - preds) ** 2) / (N - p)
 
@@ -79,6 +110,7 @@ def run_simulation(estimator_class, n_sim=1000, **data_params):
         se_beta = np.sqrt(sigma_hat * np.diagonal(xtx_inv))
 
         return {
+            "name": name,
             "random_state": random_state,
             "predictions": preds,
             "beta_hat": beta_hat,
