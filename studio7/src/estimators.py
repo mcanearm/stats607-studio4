@@ -5,23 +5,20 @@ from sklearn.metrics import mean_squared_error, r2_score
 from studio7.src.simulation import generate_data
 from scipy import stats
 from studio7.src.simulation import make_positive_definite
+import pandas as pd
 
-
-class SimulationResult:
+class SimulationResult(object):
     def __init__(self, estimator, result_set) -> None:
         self.name = {
             LinearRegression: "OLS",
             QuantileRegressor: "QR",
             HuberRegressor: "Huber",
         }[estimator]
-        self.beta_hat = np.array([res["beta_hat"] for res in result_set])
-        self.rmse = np.array([res["rmse"] for res in result_set])
-        self.r2 = np.array([res["r2"] for res in result_set])
-        self.predictions = np.array([res["predictions"] for res in result_set])
-        self.true_betas = np.array([res["true_beta"] for res in result_set])
-        self.se_beta = np.array([res["se_beta"] for res in result_set])
-        self.N = np.array([res["N"] for res in result_set])
-        self.p = len(self.true_betas[0])
+        self._df = pd.DataFrame(result_set)
+
+    def __getattr__(self, name):
+        # delegate all other attributes/methods to the underlying DataFrame
+        return getattr(self._df, name)
 
     def __str__(self):
         rmse_ci_str = f"RMSE: {self._ci_string(self.rmse)}"
@@ -58,6 +55,7 @@ def run_simulation(estimator_class, n_sim=1000, **data_params):
         ]
         return SimulationResult(estimator_class, outputs)
     else:
+        p = data_params["p"]  # this should error if p not provided
         X, y, beta = generate_data(**data_params)
         model = estimator_class()
         preds = model.fit(X, y).predict(X)
@@ -69,7 +67,7 @@ def run_simulation(estimator_class, n_sim=1000, **data_params):
         sigma_hat = np.sum((y - preds) ** 2) / (N - p)
 
         xtx_inv = make_positive_definite(np.linalg.inv(X.T @ X))
-        se_beta = np.diagonal(np.sqrt(sigma_hat * xtx_inv))
+        se_beta = np.sqrt(sigma_hat * np.diagonal(xtx_inv))
 
         return {
             "predictions": preds,
@@ -81,18 +79,3 @@ def run_simulation(estimator_class, n_sim=1000, **data_params):
             "N": N,
             **data_params,
         }
-
-
-if __name__ == "__main__":
-    p = 10
-    for regressor in [LinearRegression, QuantileRegressor, HuberRegressor]:
-        sim_result = run_simulation(
-            regressor,
-            n_sim=200,
-            p=p,
-            aspect_ratio=0.2,
-            covariance=np.identity(p),
-            degrees_of_freedom=100,
-            SNR=2.0,
-        )
-        print(sim_result)
