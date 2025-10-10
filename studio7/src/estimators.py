@@ -30,6 +30,9 @@ def _get_estimator_name(estimator_class):
 
 
 class SimulationResult(object):
+
+    stacked_attribtes = ["beta", "true_beta", "se_beta", "predictions", "beta_hat"]
+
     def __init__(self, estimator, result_set) -> None:
         self.name = _get_estimator_name(estimator)
         self._df = pd.DataFrame(result_set)
@@ -39,7 +42,19 @@ class SimulationResult(object):
         # Prevent recursion during unpickling or before _df exists
         if "_df" not in self.__dict__:
             raise AttributeError(f"{name} not found")
-        return getattr(self._df, name)
+        elif name in self.stacked_attribtes:
+            return np.stack(self._df[name].values)
+        else:
+            return getattr(self._df, name)
+
+    def __getitem__(self, key):
+        """
+        Allow use of normal pandas Dataframe indexing
+        """
+        if key in self.stacked_attribtes:
+            return np.stack(self._df[key].values)
+        else:
+            return self._df[key]
 
     def __str__(self):
         start_text = f"{'-' * 40}\nSim Result: {self.name}\nN_sim: {len(self.r2)}"
@@ -59,9 +74,9 @@ class SimulationResult(object):
 
     def calculate_coverage(self, alpha=0.05):
         """Calculate coverage of the true values according to alpha using quantiles"""
-        beta_hat_estimates = np.stack(self.beta_hat)
-        se_betas = np.stack(self.se_beta)
-        true_beta = np.stack(self.true_beta)
+        beta_hat_estimates = self.beta_hat
+        se_betas = self.se_beta
+        true_beta = self.true_beta
 
         t_stat = stats.t.ppf(1 - alpha / 2, df=self.N - 1)
         lower = beta_hat_estimates - t_stat[:, None] * se_betas
@@ -98,7 +113,7 @@ class SimulationResult(object):
 
 
 def run_simulation(
-    estimator_class, n_sim=1000, **data_params
+    estimator_class, n_sim=1000, rng=None, **data_params
 ) -> SimulationResult | dict:
     """
     Run the simulations for a given estimator class. Notably, we're just using
@@ -111,14 +126,15 @@ def run_simulation(
         ]
         return SimulationResult(estimator_class, outputs)
     else:
-        random_state = (np.random.get_state(),)
+        if rng is None:
+            rng = np.random.default_rng()
         p = data_params["p"]  # this should error if p not provided
         try:
             # get any off diagonal term, they should be the same in our setup
             rho = float(data_params["covariance"][0, 1])
         except IndexError:
             rho = np.nan
-        X, y, beta = generate_data(**data_params)
+        X, y, beta = generate_data(rng=rng, **data_params)
         model = estimator_class()
         preds = model.fit(X, y).predict(X)
         beta_hat = model.coef_
@@ -135,7 +151,7 @@ def run_simulation(
 
         return {
             "name": name,
-            "random_state": random_state,
+            "random_state": rng,
             "predictions": preds,
             "beta_hat": beta_hat,
             "rmse": rmse,

@@ -7,6 +7,7 @@ from studio7.src.estimators import SimulationResult, run_simulation
 from sklearn.linear_model import LinearRegression, QuantileRegressor, HuberRegressor
 from functools import partial
 
+
 @pytest.fixture
 def sample_data():
     p = 5
@@ -20,6 +21,7 @@ def sample_data():
         SNR=2.0,
     )
     return sim_result
+
 
 def test_partial_regressor():
     p = 5
@@ -44,3 +46,7 @@ def test_sim_read_write(sample_data):
         assert isinstance(result, SimulationResult)
         assert result.name == sample_data.name
         assert np.allclose(result.beta_hat[0], sample_data.beta_hat[0])
+
+
+def test_dict_interface(sample_data):
+    assert np.all(sample_data["beta_hat"] == sample_data.beta_hat)
