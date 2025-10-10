@@ -48,5 +48,9 @@ def test_sim_read_write(sample_data):
         assert np.allclose(result.beta_hat[0], sample_data.beta_hat[0])
 
 
-def test_dict_interface(sample_data):
-    assert np.all(sample_data["beta_hat"] == sample_data.beta_hat)
+@pytest.mark.parametrize(
+    "attribute",
+    SimulationResult.stacked_attribtes
+)
+def test_dict_interface(attribute, sample_data):
+    assert np.all(sample_data[attribute] == sample_data.__getattr__(attribute))

@@ -30,8 +30,7 @@ def _get_estimator_name(estimator_class):
 
 
 class SimulationResult(object):
-
-    stacked_attribtes = ["beta", "true_beta", "se_beta", "predictions", "beta_hat"]
+    stacked_attribtes = ["true_beta", "se_beta", "predictions", "beta_hat"]
 
     def __init__(self, estimator, result_set) -> None:
         self.name = _get_estimator_name(estimator)
@@ -99,12 +98,14 @@ class SimulationResult(object):
             self.SNR[0],
             self.degrees_of_freedom[0],
             self.aspect_ratio[0],
-            self.rho[0]
+            self.rho[0],
         )
 
     @classmethod
     def _construct_filepath(cls, name, p, snr, df, ar, rho):
-        return Path(f"{name}/p={p:0.0f}_snr={snr:0.0f}_df={df:0.0f}_ar={ar:0.2f}_rho={rho:0.2f}.pkl")
+        return Path(
+            f"{name}/p={p:0.0f}_snr={snr:0.0f}_df={df:0.0f}_ar={ar:0.2f}_rho={rho:0.2f}.pkl"
+        )
 
     @classmethod
     def load(cls, input_filepath: Path):
