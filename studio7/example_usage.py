@@ -13,7 +13,6 @@ import pandas as pd
 from sklearn.linear_model import HuberRegressor, LinearRegression, QuantileRegressor
 
 from studio7.src.estimators import run_simulation
-from studio7.src.plot_function import plot_figure
 from studio7.src.simulation import generate_covariance_structure, generate_data
 from studio7.src.estimators import SimulationResult, _get_estimator_name
 
@@ -24,8 +23,8 @@ if __name__ == "__main__":
     # 使用 sklearn 的回归器
 
     # 生成数据
-    n_sims = 1000
-    t_df = [1e1, 1e2, 1e3, 1e4, 1e5]
+    n_sims = 1500
+    t_df = [1, 1e1, 1e2, 1e3]
     ar = [0.2, 0.5, 0.8]
     corr = [0, 0.5, 0.9]
     snr = [1, 5, 10]
@@ -38,7 +37,8 @@ if __name__ == "__main__":
     scenarios = list(product(t_df, ar, corr, snr, regressors))
     output_dir = Path("studio7/sim_outputs/")
     results_list = []
-
+    
+    # run simulations
     for (i, scenario) in enumerate(scenarios):
         try:
             p = 5  # for now, hard code p
@@ -67,15 +67,3 @@ if __name__ == "__main__":
             err_msg = f"Error in scenario {i+1} - df: {_df}, ar: {_ar}, corr: {_corr}, snr: {_snr}, regressor: {_regressor}\nError: {e}"
             logging.error(err_msg)
             continue
-
-
-
-dfs = []
-for root, _, files in os.walk(output_dir):
-    for file in files:
-        if file.endswith(".pkl"):
-            full_path = os.path.join(root, file)
-            dfs.append(pd.read_pickle(full_path))    
-
-out_all = pd.concat(dfs, ignore_index=True)
-plot_figure(out_all, save_path=output_dir/"figures/mse_plot.png", height=3, aspect=1)
