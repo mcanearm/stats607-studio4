@@ -34,6 +34,7 @@ base_path = "studio7/sim_outputs"
 
 
 def load_data(base_path=None):
+    """Load all simulation results and put in a DataFrame."""
     if base_path is None:
         raise ValueError("You must provide a base path to load the data from.")
 
@@ -51,6 +52,7 @@ def load_data(base_path=None):
 
 
 def plot_with_bands(x, y, **kwargs):
+    """Plot lines with error bands."""
     data = kwargs.pop("data")
     plot_bands = kwargs.pop("plot_bands", True)
     ax = plt.gca()
@@ -77,6 +79,7 @@ def plot_with_bands(x, y, **kwargs):
 def aggregate_results(
     results, aggregate_x="rho", aggregate_y="SNR", log_rmse=True, log_df=False
 ):
+    """aggregate results by taking mean and sem of rmse for each method and degrees_of_freedom"""
     # mk grouped df
     grouped_stats = (
         results.groupby(["name", "degrees_of_freedom", aggregate_x, aggregate_y])
@@ -118,6 +121,7 @@ def plot_individual(
     aggregate_x="rho",
     aggregate_y="SNR",
 ):
+    """Make individual plots for each combination of aggregate_x and aggregate_y."""
     plt.rcParams.update(custom_rcparams)
 
     if colors is None:
@@ -186,6 +190,7 @@ def plot_boxplot(
     y="rmse",
     n_boxplots=3,
 ):
+    """Make boxplot of rmse vs x variable. n_boxplots controls how many boxplots to show."""
     plt.rcParams.update(custom_rcparams)
     if colors is None:
         colors = defaults_colors
@@ -247,6 +252,7 @@ def plot_grid(
     aggregate_x="rho",
     aggregate_y="SNR",
 ):
+    """Plot grid of plots for each combination of aggregate_x and aggregate_y."""
     plt.rcParams.update(custom_rcparams)
     if colors is None:
         colors = defaults_colors
