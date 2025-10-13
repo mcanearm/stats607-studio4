@@ -115,20 +115,15 @@ class SimulationResult(object):
 
 def run_simulation(
     estimator_class, n_sim=1000, rng=None, **data_params
-) -> SimulationResult | dict:
+) -> SimulationResult:
     """
     Run the simulations for a given estimator class. Notably, we're just using
     the default parameters on each estimator class.
     """
-    if n_sim > 1:
-        outputs = [
-            run_simulation(estimator_class, n_sim=1, **data_params)
-            for _ in range(n_sim)
-        ]
-        return SimulationResult(estimator_class, outputs)
-    else:
-        if rng is None:
-            rng = np.random.default_rng()
+    if rng is None:
+        rng = np.random.default_rng()
+
+    def _run_sim():
         p = data_params["p"]  # this should error if p not provided
         try:
             # get any off diagonal term, they should be the same in our setup
@@ -147,10 +142,10 @@ def run_simulation(
         N = X.shape[0]
         sigma_hat = np.sum((y - preds) ** 2) / (N - p)
 
-        xtx_inv = np.linalg.inv(X.T @ X)
+        xtx_inv = np.linalg.pinv(X.T @ X)
         se_beta = np.sqrt(sigma_hat * np.diagonal(xtx_inv))
 
-        return {
+        out = {
             "name": name,
             "random_state": rng,
             "predictions": preds,
@@ -161,8 +156,13 @@ def run_simulation(
             "se_beta": se_beta,
             "N": N,
             "rho": rho,
+            "rng": rng,
             **data_params,
         }
+        return out
+
+    outputs = SimulationResult(estimator_class, [_run_sim() for _ in range(n_sim)])
+    return outputs
 
 
 if __name__ == "__main__":

@@ -4,6 +4,7 @@ import logging
 
 logging.basicConfig(level=logging.INFO)
 
+
 def generate_covariance_structure(rho, p):
     """
     Generates a covariance matrix with rho correlation between variables.
@@ -54,12 +55,7 @@ def generate_covariates(p, aspect_ratio, covariance, rng=None):
 
 
 def generate_data(
-    p=5,
-    aspect_ratio=0.2,
-    covariance=None,
-    degrees_of_freedom=5,
-    SNR=0.5,
-    rng=None
+    p=5, aspect_ratio=0.2, covariance=None, degrees_of_freedom=5, SNR=0.5, rng=None
 ):
     """
     Simulates the data (X, Y). Samples X from multivariate normal with mean 0 and given covariance.
@@ -97,7 +93,10 @@ def generate_data(
     X = generate_covariates(p, aspect_ratio, covariance, rng=rng)
 
     n = math.ceil(p / aspect_ratio)
-    sigma2 = (beta.T @ X.T @ X @ beta) / (n * SNR)
+    signal_var = np.mean((X @ beta) ** 2)
+    sigma2 = signal_var / SNR
+
+    # sigma2 = (beta.T @ X.T @ X @ beta) / (n * SNR)
     sigma = math.sqrt(sigma2)
 
     error = sigma * rng.standard_t(degrees_of_freedom, n)

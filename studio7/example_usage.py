@@ -2,21 +2,45 @@
 示例：如何在 Studio 7 项目中进行导入和使用
 """
 
-import math
+import logging
+import sys
 from functools import partial
 from itertools import product
+from multiprocessing import Pool, cpu_count
 from pathlib import Path
-import logging
-import os
-import pandas as pd
 
 from sklearn.linear_model import HuberRegressor, LinearRegression, QuantileRegressor
 
-from studio7.src.estimators import run_simulation
-from studio7.src.simulation import generate_covariance_structure, generate_data
-from studio7.src.estimators import SimulationResult, _get_estimator_name
+from studio7.src.estimators import run_simulation, _get_estimator_name
+from studio7.src.simulation import generate_covariance_structure
 
 logging.basicConfig(level=logging.INFO)
+
+
+def run_simulation_in_parallel(scenario):
+    regressor = scenario[0]
+    aspect_ratio = scenario[2]
+    covariance = generate_covariance_structure(scenario[3], 5)
+    degrees_of_freedom = scenario[1]
+    SNR = scenario[4]
+    reg_name = _get_estimator_name(regressor)
+    try:
+        sim_out = run_simulation(
+            regressor,
+            n_sim=1500,
+            p=5,
+            aspect_ratio=aspect_ratio,
+            covariance=covariance,
+            degrees_of_freedom=degrees_of_freedom,
+            SNR=SNR,
+        )
+        sim_out.save(Path("studio7/sim_outputs/"))
+    except Exception as e:
+        err_msg = f"Error in scenario - df: {degrees_of_freedom}, ar: {aspect_ratio}, corr: {scenario[3]}, snr: {SNR}, regressor: {reg_name}\nError: {e}"
+        logging.error(err_msg)
+    sys.stdout.flush()
+    sys.stderr.flush()
+
 
 # 使用示例
 if __name__ == "__main__":
@@ -34,36 +58,8 @@ if __name__ == "__main__":
         partial(HuberRegressor, max_iter=500),
     ]
 
-    scenarios = list(product(t_df, ar, corr, snr, regressors))
+    scenarios = list(product(regressors, t_df, ar, corr, snr))
     output_dir = Path("studio7/sim_outputs/")
-    results_list = []
-    
-    # run simulations
-    for (i, scenario) in enumerate(scenarios):
-        try:
-            p = 5  # for now, hard code p
-            _df, _ar, _corr, _snr, _regressor = scenario
-            name = _get_estimator_name(_regressor)
-            out_fp = SimulationResult._construct_filepath(name, p, _snr, _df, _ar, _corr)
-            if (output_dir / out_fp).exists():
-                logging.info(f"Skipping scenario {i+1} - already exists: {out_fp}")
-                continue
 
-            cov_mat = generate_covariance_structure(_corr, p)
-            sim_result  = run_simulation(
-                _regressor,
-                n_sim=n_sims,
-                p=p,
-                aspect_ratio=_ar,
-                covariance=cov_mat,
-                degrees_of_freedom=_df,
-                SNR=_snr,
-            )
-            logging.info(f"Completed {i+1} of {len(scenarios)} scenarios")
-            print(sim_result)
-            sim_result.save(output_dir)
-            results_list.append(sim_result)
-        except Exception as e:
-            err_msg = f"Error in scenario {i+1} - df: {_df}, ar: {_ar}, corr: {_corr}, snr: {_snr}, regressor: {_regressor}\nError: {e}"
-            logging.error(err_msg)
-            continue
+    p = Pool(min(cpu_count(), 4))
+    p.map(run_simulation_in_parallel, scenarios)

@@ -49,10 +49,11 @@ def samples():
     return np.random.normal(0, 1, size=1000)
 
 
-
 """
 atomize the next few tests to see what specifically fails.
 """
+
+
 def test_boot_alpha(samples):
     with pytest.raises(ValueError, match="alpha must be between 0 and 1"):
         bootstrap_ci(samples, alpha=-0.1)
@@ -89,7 +90,7 @@ def test_R_squared_type():
 
 def test_R_squared_shape():
     assert isinstance(R_squared(X, Y), float)
-    
+
 
 def test_R_squared_distribution():
     covariates = np.random.uniform(0, 1, size=(100, 3))
@@ -98,13 +99,17 @@ def test_R_squared_distribution():
 
     # no beta, under null R2 should be beta distributed
     boot_samples = bootstrap_sample(X, Y, R_squared, n_bootstrap=10000)
-    beta_samples = np.random.beta(a=X.shape[1]/2, b=(X.shape[0]-X.shape[1]-1)/2, size=10000)
-    
+    beta_samples = np.random.beta(
+        a=X.shape[1] / 2, b=(X.shape[0] - X.shape[1] - 1) / 2, size=10000
+    )
+
     assert np.isclose(np.mean(boot_samples), np.mean(beta_samples), atol=0.1)
     assert np.isclose(np.var(boot_samples), np.var(beta_samples), atol=0.1)
 
-    diff = np.max(np.histogram(boot_samples, bins=5, density=True)[0] -
-                  np.histogram(beta_samples, bins=5, density=True)[0])
+    diff = np.max(
+        np.histogram(boot_samples, bins=5, density=True)[0]
+        - np.histogram(beta_samples, bins=5, density=True)[0]
+    )
 
     assert diff < 0.5
 
@@ -132,7 +137,7 @@ def test_R_squared_KS():
     beta_param = (n - p - 1) / 2.0
 
     # KS test: H0 = boot_samples ~ Beta(alpha, beta_param)
-    stat, pval = kstest(boot_samples, 'beta', args=(alpha, beta_param))
+    stat, pval = kstest(boot_samples, "beta", args=(alpha, beta_param))
 
     # Expect a non-small p-value if distributions agree.
     assert pval > 0.01, (

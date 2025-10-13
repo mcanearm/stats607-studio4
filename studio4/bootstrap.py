@@ -3,7 +3,7 @@ Strong linear model in regression
     Y = X beta + eps, where eps~ N(0, sigma^2 I)
     Under the null where beta_1 = ... = beta_p = 0,
     the R-squared coefficient has a known distribution
-    (if you have an intercept beta_0), 
+    (if you have an intercept beta_0),
         R^2 ~ Beta(p/2, (n-p-1)/2)
 """
 
@@ -32,7 +32,7 @@ def bootstrap_sample(X, y, compute_stat, n_bootstrap=1000):
     ....
     """
     bootstrap_stats = np.empty(n_bootstrap)
-    
+
     for b in range(n_bootstrap):
         idx = np.random.choice(X.shape[0], size=X.shape[0], replace=True)
         Xtilde = X[idx]
@@ -40,6 +40,7 @@ def bootstrap_sample(X, y, compute_stat, n_bootstrap=1000):
         bootstrap_stats[b] = compute_stat(Xtilde, ytilde)
 
     return bootstrap_stats
+
 
 def bootstrap_ci(bootstrap_stats, alpha=0.05):
     """
@@ -89,17 +90,17 @@ def R_squared(X, y):
     -------
     float
         R-squared value (between 0 and 1) from OLS
-    
+
     Raises
     ------
     ValueError
         If X.shape[0] != len(y)
         If X.ndim != 2
     """
-    
+
     X = np.asarray(X)
     y = np.asarray(y)
-    
+
     dim_msg = "X must be a 2D array and y must be a 1D array."
     if X.ndim != 2:
         raise ValueError(dim_msg)
