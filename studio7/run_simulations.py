@@ -18,6 +18,7 @@ from multiprocessing import Pool
 from pathlib import Path
 
 from sklearn.linear_model import HuberRegressor, LinearRegression, QuantileRegressor
+import numpy as np
 
 from studio7.src.estimators import run_simulation, _get_estimator_name, SimulationResult
 from studio7.src.simulation import generate_covariance_structure
@@ -84,6 +85,7 @@ if __name__ == "__main__":
     ]
 
     scenarios = list(product(regressors, t_df, ar, corr, snr))
+    np.random.shuffle(scenarios)
 
     p = Pool(8)
     p.map(run_simulation_in_parallel, scenarios)

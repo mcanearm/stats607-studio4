@@ -1,4 +1,5 @@
 """Generate plots"""
+import argparse
 
 from pathlib import Path
 from studio7.src.plot_function import (
@@ -10,8 +11,25 @@ from studio7.src.plot_function import (
 
 
 if __name__ == "__main__":
-    figure_dir = Path("studio7/figures/")
-    output_dir = Path("studio7/sim_outputs/")
+    parser = argparse.ArgumentParser(description="Generate plots from simulation results")
+    parser.add_argument(
+        "--figures_dir", type=str, default="studio7/figures/", help="Directory to save figures"
+    )
+    parser.add_argument(
+        "--output_dir", type=str, default="studio7/sim_outputs/", help="Directory of simulation outputs"
+    )
+    parser.add_argument(
+        "--log-rmse", action="store_true", help="Whether to log-transform RMSE in boxplots", default=False
+    )
+
+    # this is always on, but... maybe we change that later.
+    parser.add_argument(
+        "--log-x", action="store_true", help="Whether to log-transform degrees_of_freedom in plots", default=False
+    )
+
+    args = parser.parse_args()
+    figure_dir = args.figures_dir
+    output_dir = args.output_dir
 
     print("Loading data...")
     results_combined = load_data(base_path=output_dir)
@@ -46,8 +64,8 @@ if __name__ == "__main__":
             results_combined,
             height=4,
             aspect=1.3,
-            log_rmse=True,
-            log_x=False,
+            log_rmse=args.log_rmse,
+            log_x=args.log_x,
             x=col_list[i],
             n_boxplots=5,
             save_path=f"studio7/figures/boxplots/boxplot_{col_list[i]}",
