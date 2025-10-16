@@ -30,7 +30,6 @@ def _get_estimator_name(estimator_class):
 
 
 class SimulationResult(object):
-    stacked_attribtes = ["true_beta", "se_beta", "predictions", "beta_hat"]
 
     def __init__(self, estimator, result_set) -> None:
         self.name = _get_estimator_name(estimator)
@@ -41,19 +40,17 @@ class SimulationResult(object):
         # Prevent recursion during unpickling or before _df exists
         if "_df" not in self.__dict__:
             raise AttributeError(f"{name} not found")
-        elif name in self.stacked_attribtes:
-            return np.stack(self._df[name].values)
-        else:
-            return getattr(self._df, name)
+        return getattr(self._df, name)
 
     def __getitem__(self, key):
         """
         Allow use of normal pandas Dataframe indexing
         """
-        if key in self.stacked_attribtes:
-            return np.stack(self._df[key].values)
+        out = self._df[key]
+        if len(out[0]) > 1:
+            return np.stack(out.values)
         else:
-            return self._df[key]
+            return out
 
     def __str__(self):
         start_text = f"{'-' * 40}\nSim Result: {self.name}\nN_sim: {len(self.r2)}"

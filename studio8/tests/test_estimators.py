@@ -2,7 +2,7 @@ import tempfile
 import numpy as np
 from pathlib import Path
 import pytest
-from studio7.src.estimators import SimulationResult, run_simulation
+from studio8.src.estimators import SimulationResult, run_simulation
 from sklearn.linear_model import LinearRegression, HuberRegressor
 from functools import partial
 
@@ -47,6 +47,9 @@ def test_sim_read_write(sample_data):
         assert np.allclose(result.beta_hat[0], sample_data.beta_hat[0])
 
 
-@pytest.mark.parametrize("attribute", SimulationResult.stacked_attribtes)
+@pytest.mark.parametrize(
+    "attribute",
+    ["beta_hat", "true_beta", "ci_lower", "ci_upper", "ci_width", "se_beta"],
+)
 def test_dict_interface(attribute, sample_data):
-    assert np.all(sample_data[attribute] == sample_data.__getattr__(attribute))
+    assert isinstance(sample_data[attribute], np.ndarray)
