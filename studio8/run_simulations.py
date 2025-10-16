@@ -76,9 +76,6 @@ def run_simulation_in_parallel(scenario):
     
 # Example usage
 if __name__ == "__main__":
-    # Set multiprocessing start method for compatibility
-    mp.set_start_method("spawn", force=True)
-    
     num_replications = 5000
     
     # Define scenario parameters
