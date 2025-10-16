@@ -1,6 +1,5 @@
 """Generate plots"""
 import argparse
-from pathlib import Path
 
 from studio7.src.plot_function import (
     plot_grid,
