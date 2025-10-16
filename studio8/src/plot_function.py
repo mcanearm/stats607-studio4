@@ -1,12 +1,11 @@
+import logging
+import os
+from typing import Dict, Optional
+
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 import seaborn as sns
-import os
-import numpy as np
-import logging
-from pathlib import Path
-from typing import Optional, Dict
-from scipy import stats
 
 # Suppress matplotlib category warning for boxplots
 logging.getLogger("matplotlib.category").setLevel(logging.ERROR)
@@ -37,6 +36,7 @@ linestyles = {"QR": "-", "Huber": "--", "OLS": "-."}
 
 base_path = "studio7/sim_outputs"
 
+
 def load_data(base_path=None):
     """Load all simulation result .pkl files from the given directory into a DataFrame."""
     if base_path is None:
@@ -53,6 +53,7 @@ def load_data(base_path=None):
         raise ValueError(f"No .pkl files found in the directory: {base_path}")
 
     return pd.concat(dfs, ignore_index=True)
+
 
 def plot_with_bands(x, y, **kwargs):
     """
@@ -76,6 +77,7 @@ def plot_with_bands(x, y, **kwargs):
                 alpha=0.2,
                 color=color,
             )
+
 
 def aggregate_results(
     results, aggregate_x="rho", aggregate_y="SNR", log_rmse=True, log_df=False
@@ -110,6 +112,7 @@ def aggregate_results(
         )
 
     return grouped_stats
+
 
 def plot_individual(
     results,
@@ -181,6 +184,7 @@ def plot_individual(
             plt.show()
         plt.close()
 
+
 def plot_boxplot(
     results,
     colors=None,
@@ -244,6 +248,7 @@ def plot_boxplot(
     else:
         plt.show()
     plt.close()
+
 
 def plot_grid(
     results,
@@ -347,14 +352,17 @@ def plot_grid(
 
     return g
 
+
 # Ensure the dataframe contains coverage and interval width columns; add them if missing
+
 
 def _agg_sem(x):
     """
     Helper function: compute standard error of the mean for a numeric array x.
     """
     x = np.asarray(x, float)
-    return np.std(x, ddof=1)/np.sqrt(len(x)) if len(x) > 1 else 0.0
+    return np.std(x, ddof=1) / np.sqrt(len(x)) if len(x) > 1 else 0.0
+
 
 def _ensure_cov_width_columns(df: pd.DataFrame) -> pd.DataFrame:
     """
@@ -392,6 +400,7 @@ def _ensure_cov_width_columns(df: pd.DataFrame) -> pd.DataFrame:
     out["width_mean"] = widths
     return out
 
+
 def plot_coverage(
     results: pd.DataFrame,
     colors: Optional[Dict[str, str]] = None,
@@ -419,32 +428,49 @@ def plot_coverage(
         missing = sorted(set(group_cols) - set(tmp.columns))
         raise ValueError(f"Missing columns for coverage: {missing}")
 
-    stat = (tmp.groupby(group_cols)["coverage_mean"]
-              .agg(mean="mean", sem=_agg_sem)
-              .reset_index())
+    stat = (
+        tmp.groupby(group_cols)["coverage_mean"]
+        .agg(mean="mean", sem=_agg_sem)
+        .reset_index()
+    )
 
     if log_df:
         stat["degrees_of_freedom"] = np.log10(stat["degrees_of_freedom"])
 
     # FacetGrid: turn off margin_titles for right margin column text
     g = sns.FacetGrid(
-        stat, row=aggregate_y, col=aggregate_x,
-        margin_titles=False, sharey=True, sharex=True,
-        height=height, aspect=aspect
+        stat,
+        row=aggregate_y,
+        col=aggregate_x,
+        margin_titles=False,
+        sharey=True,
+        sharex=True,
+        height=height,
+        aspect=aspect,
     )
 
     def draw(data, **kw):
         ax = plt.gca()
         for m in data["name"].unique():
-            d = data[data["name"]==m].sort_values("degrees_of_freedom")
-            if d.empty: continue
-            line = ax.plot(d["degrees_of_freedom"], d["mean"],
-                           marker="o", linestyle=linestyles.get(m,"-"),
-                           color=colors.get(m), label=m)
+            d = data[data["name"] == m].sort_values("degrees_of_freedom")
+            if d.empty:
+                continue
+            line = ax.plot(
+                d["degrees_of_freedom"],
+                d["mean"],
+                marker="o",
+                linestyle=linestyles.get(m, "-"),
+                color=colors.get(m),
+                label=m,
+            )
             if se_bands:
-                ax.fill_between(d["degrees_of_freedom"],
-                                d["mean"]-d["sem"], d["mean"]+d["sem"],
-                                alpha=0.2, color=line[0].get_color())
+                ax.fill_between(
+                    d["degrees_of_freedom"],
+                    d["mean"] - d["sem"],
+                    d["mean"] + d["sem"],
+                    alpha=0.2,
+                    color=line[0].get_color(),
+                )
         # Reference line for nominal CI level
         ax.axhline(ci_level, ls="--", lw=1, color="red", alpha=0.7)
         ax.set_ylim(0.0, 1.05)
@@ -460,26 +486,34 @@ def plot_coverage(
     # Set unified axis labels (bottom center, left center only)
     label_fs = 12
     g.axes[-1, g.axes.shape[1] // 2].set_xlabel(
-        "Log Degrees of Freedom" if log_df else "Degrees of Freedom",
-        fontsize=label_fs
+        "Log Degrees of Freedom" if log_df else "Degrees of Freedom", fontsize=label_fs
     )
     g.axes[g.axes.shape[0] // 2, 0].set_ylabel("Coverage", fontsize=label_fs)
 
     # Set column titles for each facet column at the top
     for j in range(g.axes.shape[1]):
-        title = f"{aggregate_x if aggregate_x=='SNR' else aggregate_x.replace('_',' ').title()}: {g.col_names[j]}"
+        title = f"{aggregate_x if aggregate_x == 'SNR' else aggregate_x.replace('_', ' ').title()}: {g.col_names[j]}"
         g.axes[0, j].set_title(title)
 
     # Set custom row facet labels (right side, vertical text)
     for i in range(g.axes.shape[0]):
-        txt = f"{aggregate_y if aggregate_y=='SNR' else aggregate_y.replace('_',' ').title()}: {g.row_names[i]}"
+        txt = f"{aggregate_y if aggregate_y == 'SNR' else aggregate_y.replace('_', ' ').title()}: {g.row_names[i]}"
         g.axes[i, -1].text(
-            1.02, 0.95, txt, transform=g.axes[i, -1].transAxes,
-            ha="left", va="top", rotation=90
+            1.02,
+            0.95,
+            txt,
+            transform=g.axes[i, -1].transAxes,
+            ha="left",
+            va="top",
+            rotation=90,
         )
 
     # Figure title, including percentage for CI target
-    sup = "Coverage vs Log Degrees of Freedom" if log_df else "Coverage vs Degrees of Freedom"
+    sup = (
+        "Coverage vs Log Degrees of Freedom"
+        if log_df
+        else "Coverage vs Degrees of Freedom"
+    )
     g.fig.suptitle(sup, y=1.02)
 
     # Add margin on the right for legend
@@ -488,20 +522,21 @@ def plot_coverage(
     # Place legend outside plot area, right margin
     g.add_legend(
         title="Method",
-        bbox_to_anchor=(0.85, 0.5),   # Canvas coordinate: just right of grid
+        bbox_to_anchor=(0.85, 0.5),  # Canvas coordinate: just right of grid
         loc="center left",
         frameon=False,
-        ncol=1,                       # Single column, vertical layout
+        ncol=1,  # Single column, vertical layout
     )
 
     # Save to file if path is specified, else show interactively
     if save_path:
-        plt.savefig(save_path+".png", dpi=300, bbox_inches="tight")
-        plt.savefig(save_path+".pdf", dpi=300, bbox_inches="tight")
+        plt.savefig(save_path + ".png", dpi=300, bbox_inches="tight")
+        plt.savefig(save_path + ".pdf", dpi=300, bbox_inches="tight")
     else:
         plt.show()
     plt.close()
     return g
+
 
 def plot_interval_width(
     results: pd.DataFrame,
@@ -535,22 +570,27 @@ def plot_interval_width(
     # Compute group means and SEM
     stat = (
         tmp.groupby(group_cols)["width_mean"]
-          .agg(mean="mean", sem=_agg_sem)
-          .reset_index()
+        .agg(mean="mean", sem=_agg_sem)
+        .reset_index()
     )
 
     if log_df:
         stat["degrees_of_freedom"] = np.log10(stat["degrees_of_freedom"])
     if log_width:
         # delta method approximation for SEM on log scale: sem/mean
-        stat["sem"]  = stat["sem"] / stat["mean"].replace(0, np.nan)
+        stat["sem"] = stat["sem"] / stat["mean"].replace(0, np.nan)
         stat["mean"] = np.log10(stat["mean"].replace(0, np.nan))
 
     # Create FacetGrid for plotting
     g = sns.FacetGrid(
-        stat, row=aggregate_y, col=aggregate_x,
-        margin_titles=False, sharey=False, sharex=True,
-        height=height, aspect=aspect
+        stat,
+        row=aggregate_y,
+        col=aggregate_x,
+        margin_titles=False,
+        sharey=False,
+        sharex=True,
+        height=height,
+        aspect=aspect,
     )
 
     def draw(data, **kw):
@@ -561,16 +601,21 @@ def plot_interval_width(
                 continue
             # Plot groupwise mean interval width
             line = ax.plot(
-                d["degrees_of_freedom"], d["mean"],
-                marker="o", linestyle=linestyles.get(m, "-"),
-                color=colors.get(m), label=m
+                d["degrees_of_freedom"],
+                d["mean"],
+                marker="o",
+                linestyle=linestyles.get(m, "-"),
+                color=colors.get(m),
+                label=m,
             )
             # Plot SE bands if requested
             if se_bands:
                 ax.fill_between(
                     d["degrees_of_freedom"],
-                    d["mean"] - d["sem"], d["mean"] + d["sem"],
-                    alpha=0.2, color=line[0].get_color()
+                    d["mean"] - d["sem"],
+                    d["mean"] + d["sem"],
+                    alpha=0.2,
+                    color=line[0].get_color(),
                 )
 
     g.map_dataframe(draw)
@@ -584,32 +629,40 @@ def plot_interval_width(
     # Set common axis labels once
     label_fs = 12
     g.axes[-1, g.axes.shape[1] // 2].set_xlabel(
-        "Log Degrees of Freedom" if log_df else "Degrees of Freedom",
-        fontsize=label_fs
+        "Log Degrees of Freedom" if log_df else "Degrees of Freedom", fontsize=label_fs
     )
     g.axes[g.axes.shape[0] // 2, 0].set_ylabel(
         "Log Average CI Width" if log_width else "Average Interval Width",
-        fontsize=label_fs
+        fontsize=label_fs,
     )
 
     # Set top column titles
     for j in range(g.axes.shape[1]):
-        title = f"{aggregate_x if aggregate_x=='SNR' else aggregate_x.replace('_',' ').title()}: {g.col_names[j]}"
+        title = f"{aggregate_x if aggregate_x == 'SNR' else aggregate_x.replace('_', ' ').title()}: {g.col_names[j]}"
         g.axes[0, j].set_title(title)
 
     # Set right margin facet row labels
     for i in range(g.axes.shape[0]):
-        txt = f"{aggregate_y if aggregate_y=='SNR' else aggregate_y.replace('_',' ').title()}: {g.row_names[i]}"
+        txt = f"{aggregate_y if aggregate_y == 'SNR' else aggregate_y.replace('_', ' ').title()}: {g.row_names[i]}"
         g.axes[i, -1].text(
-            1.02, 0.95, txt, transform=g.axes[i, -1].transAxes,
-            ha="left", va="top", rotation=90
+            1.02,
+            0.95,
+            txt,
+            transform=g.axes[i, -1].transAxes,
+            ha="left",
+            va="top",
+            rotation=90,
         )
 
     # Set overall figure title
     if log_width:
-        sup = "Log Average CI Width vs " + ("Log Degrees of Freedom" if log_df else "Degrees of Freedom")
+        sup = "Log Average CI Width vs " + (
+            "Log Degrees of Freedom" if log_df else "Degrees of Freedom"
+        )
     else:
-        sup = "Average CI Width vs " + ("Log Degrees of Freedom" if log_df else "Degrees of Freedom")
+        sup = "Average CI Width vs " + (
+            "Log Degrees of Freedom" if log_df else "Degrees of Freedom"
+        )
     g.fig.suptitle(sup, y=1.02)
 
     # Leave space for legend on the right
