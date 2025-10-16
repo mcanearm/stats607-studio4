@@ -145,6 +145,12 @@ def run_simulation(
         xtx_inv = np.linalg.pinv(X.T @ X)
         se_beta = np.sqrt(sigma_hat * np.diagonal(xtx_inv))
 
+        alpha = 0.05
+        tcrit = stats.t.ppf(1 - alpha/2, df=N - 1)
+        ci_lower = beta_hat - tcrit * se_beta
+        ci_upper = beta_hat + tcrit * se_beta
+        ci_width = ci_upper - ci_lower
+
         out = {
             "name": name,
             "random_state": rng,
@@ -157,6 +163,9 @@ def run_simulation(
             "N": N,
             "rho": rho,
             "rng": rng,
+            "ci_lower": ci_lower,
+            "ci_upper": ci_upper,
+            "ci_width": ci_width,
             **data_params,
         }
         return out
