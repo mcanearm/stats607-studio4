@@ -19,6 +19,7 @@ from pathlib import Path
 
 from sklearn.linear_model import HuberRegressor, LinearRegression, QuantileRegressor
 import numpy as np
+import pandas as pd
 
 from studio7.src.estimators import run_simulation, _get_estimator_name, SimulationResult
 from studio7.src.simulation import generate_covariance_structure
@@ -74,28 +75,26 @@ def run_simulation_in_parallel(scenario):
 
 # Example usage
 if __name__ == "__main__":
-    # Set multiprocessing start method for compatibility
-    mp.set_start_method("spawn", force=True)
-
-    # Use sklearn regressors
-    n_sims = 1500
-    t_df = [1, 1e1, 1e2, 1e3]    # list of degrees of freedom for t-distribution
-    ar = [0.2, 0.5, 0.8]         # aspect ratios
-    corr = [0, 0.5, 0.9]         # correlation values for covariance
-    snr = [1, 5, 10]             # signal-to-noise ratios
-    regressors = [
-        LinearRegression,
-        partial(QuantileRegressor, alpha=0),
-        partial(HuberRegressor, max_iter=500),
+    
+    num_replications = 5000
+    scenarios = [
+        (1, np.geomspace(0.1, 10.0, num=5000)),
+        (50, np.geomspace(0.1, 10.0, num=500)),
+        (1000, np.geomspace(0.1, 10.0, num=5))
     ]
-
-    # Generate all combinations of scenarios
-    scenarios = list(product(regressors, t_df, ar, corr, snr))
-    # Shuffle the scenarios for more balanced parallelization
-    np.random.shuffle(scenarios)
-
-    # Run simulations in parallel using 8 processes
-    p = Pool(8)
-    p.map(run_simulation_in_parallel, scenarios)
-    p.close()
-    p.join()
+    
+    out_df = pd.DataFrame()
+    for n_sim, aspect_ratio in scenarios:
+        for ar in aspect_ratio:
+            p = ar * 200
+            covariance = generate_covariance_structure(0, p)
+            sim_out = run_simulation(
+                CHANGE THIS,
+                n_sim=n_sim,
+                p=p,
+                aspect_ratio=ar,
+                covariance=covariance,
+                degrees_of_freedom=5,
+                SNR=5,
+            )
+            out_df = pd.concat([out_df, sim_out._df], ignore_index=True)
