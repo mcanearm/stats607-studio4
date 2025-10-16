@@ -8,7 +8,7 @@ from scipy import stats
 from sklearn.linear_model import HuberRegressor, LinearRegression, QuantileRegressor
 from sklearn.metrics import mean_squared_error, r2_score
 
-from studio7.src.simulation import generate_data
+from studio8.src.simulation import generate_data
 
 
 def _get_estimator_name(estimator_class):

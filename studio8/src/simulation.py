@@ -55,7 +55,8 @@ def generate_covariates(p, aspect_ratio, covariance, rng=None):
 
 
 def generate_data(
-    p=5, aspect_ratio=0.2, covariance=None, degrees_of_freedom=5, SNR=0.5, rng=None
+    p=5, rsq=0.5, aspect_ratio=0.2, covariance=None, degrees_of_freedom=5, SNR=0.5, 
+    rng=None, sample_beta=False, noise_distribution="t"
 ):
     """
     Simulates the data (X, Y). Samples X from multivariate normal with mean 0 and given covariance.
@@ -87,7 +88,11 @@ def generate_data(
     if covariance is None:
         covariance = np.eye(p)
 
-    beta = rng.multivariate_normal(np.zeros(p), np.identity(p))
+    if sample_beta:
+        beta = rng.multivariate_normal(np.zeros(p), np.identity(p))
+    else:
+        beta = np.ones(p) * np.sqrt(rsq/p)
+    
     # beta = beta / np.linalg.norm(beta)  # optional normalization
 
     X = generate_covariates(p, aspect_ratio, covariance, rng=rng)
@@ -95,12 +100,16 @@ def generate_data(
     n = math.ceil(p / aspect_ratio)
     signal_var = np.var(X @ beta)
     sigma2 = signal_var / SNR
-    # sigma2 = 1
 
-    # sigma2 = (beta.T @ X.T @ X @ beta) / (n * SNR)
     sigma = math.sqrt(sigma2)
 
-    error = sigma * rng.standard_t(degrees_of_freedom, n)
+    if noise_distribution == "standard normal":
+        error =  rng.normal(0, 1, n)
+    elif noise_distribution == "normal":
+        error = sigma * rng.normal(0, 1, n)
+    elif noise_distribution == "t":
+        error = sigma * rng.standard_t(degrees_of_freedom, n)
+    
     Y = X @ beta + error
 
     return (X, Y, beta)
