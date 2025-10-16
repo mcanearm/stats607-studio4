@@ -134,7 +134,7 @@ def run_simulation(
         model = estimator_class()
         preds = model.fit(X, y).predict(X)
         beta_hat = model.coef_
-        rmse = np.sqrt(mean_squared_error(y, preds))
+        rmse = np.sqrt(mean_squared_error(beta, beta_hat))
         r2 = r2_score(y, preds)
 
         name = _get_estimator_name(estimator_class)  # just to validate
