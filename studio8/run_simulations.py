@@ -23,7 +23,7 @@ import numpy as np
 import pandas as pd
 
 from studio8.src.estimators import run_simulation, _get_estimator_name, SimulationResult
-from studio8.src.simulation import generate_covariance_structure, generate_data
+from studio8.src.simulation import generate_covariance_structure
 
 logging.basicConfig(level=logging.INFO)
 
