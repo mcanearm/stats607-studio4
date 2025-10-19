@@ -103,7 +103,7 @@ if __name__ == "__main__":
         for ar in aspect_ratios:
             p = int(ar * 200)
             scenarios.append((
-                LinearRegression, 
+                CHANGE THIS, 
                 degrees_of_freedom, 
                 ar, 
                 rho, 
