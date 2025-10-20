@@ -56,7 +56,7 @@ def generate_covariates(p, aspect_ratio, covariance, rng=None):
 
 def generate_data(
     p=5, rsq=0.5, aspect_ratio=0.2, covariance=None, degrees_of_freedom=5, SNR=0.5, 
-    rng=None, sample_beta=False, noise_distribution="t"
+    rng=None, sample_beta=False, noise_distribution="t", sigma2=None
 ):
     """
     Simulates the data (X, Y). Samples X from multivariate normal with mean 0 and given covariance.
@@ -96,10 +96,11 @@ def generate_data(
     # beta = beta / np.linalg.norm(beta)  # optional normalization
 
     X = generate_covariates(p, aspect_ratio, covariance, rng=rng)
-
     n = math.ceil(p / aspect_ratio)
-    signal_var = np.var(X @ beta)
-    sigma2 = signal_var / SNR
+
+    if sigma2 is None:
+        signal_var = np.var(X @ beta)
+        sigma2 = signal_var / SNR
 
     sigma = math.sqrt(sigma2)
 

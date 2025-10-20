@@ -2,7 +2,7 @@ import pytest
 import numpy as np
 from studio7.src.simulation import generate_data
 from studio7.src.estimators import run_simulation
-from sklearn.linear_model import LinearRegression, QuantileRegressor, HuberRegressor
+from sklearn.linear_model import LinearRegression, QuantileRegressor, HuberRegressor, Ridge
 from functools import partial
 
 
@@ -21,8 +21,8 @@ def test_data_generation(p):
 
 @pytest.mark.parametrize(
     "regressor",
-    [LinearRegression, partial(QuantileRegressor, alpha=0), HuberRegressor],
-    ids=["OLS", "QR", "Huber"],
+    [LinearRegression, partial(QuantileRegressor, alpha=0), HuberRegressor, partial(Ridge, alpha=1e-10)],
+    ids=["OLS", "QR", "Huber", "Ridge"],
 )
 @pytest.mark.parametrize("p", [1, 5, 10, 20], ids=["p=1", "p=5", "p=10", "p=20"])
 def test_simulation_run(regressor, p):

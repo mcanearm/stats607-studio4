@@ -31,7 +31,7 @@ def _get_estimator_name(estimator_class):
 
 
 class SimulationResult(object):
-    stacked_attribtes = ["true_beta", "se_beta", "predictions", "beta_hat"]
+    stacked_attribtes = ["true_beta", "se_beta", "predictions", "beta_hat", "rmse"]
 
     def __init__(self, estimator, result_set) -> None:
         self.name = _get_estimator_name(estimator)
@@ -58,11 +58,10 @@ class SimulationResult(object):
 
     def __str__(self):
         start_text = f"{'-' * 40}\nSim Result: {self.name}\nN_sim: {len(self.r2)}"
-        param_text = f"p: {self.p[0]}, aspect_ratio: {self.aspect_ratio[0]}, degrees_of_freedom: {self.degrees_of_freedom[0]}, SNR: {self.SNR[0]}, rho: {self.rho[0]}"
+        param_text = f"p: {self.p[0]}, aspect_ratio: {self.aspect_ratio[0]}, degrees_of_freedom: {self.degrees_of_freedom[0]}, rho: {self.rho[0]}"
         rmse_ci_str = f"RMSE: {self._ci_string(self.rmse)}"
-        r2_ci_str = f"R2: {self._ci_string(self.r2)}"
         coverage = f"Coverage (95%): {self.calculate_coverage()}"
-        str_components = [start_text, param_text, rmse_ci_str, r2_ci_str, coverage]
+        str_components = [start_text, param_text, rmse_ci_str, coverage]
         text_out = "\n".join(str_components)
         text_out += f"\n{'-' * 40}"
 
@@ -95,17 +94,17 @@ class SimulationResult(object):
     def filename(self):
         return self._construct_filepath(
             self.name,
-            self.p[0],
-            self.SNR[0],
-            self.degrees_of_freedom[0],
-            self.aspect_ratio[0],
-            self.rho[0],
+            p=self.p[0],
+            df=self.degrees_of_freedom[0],
+            ar=self.aspect_ratio[0],
+            rho=self.rho[0],
         )
 
     @classmethod
-    def _construct_filepath(cls, name, p, snr, df, ar, rho):
+    def _construct_filepath(cls, name, **kwargs):
+        key_path = [f"{key}={value}" for key, value in kwargs.items()]
         return Path(
-            f"{name}/p={p:0.0f}_snr={snr:0.0f}_df={df:0.0f}_ar={ar:0.2f}_rho={rho:0.2f}.pkl"
+            f"{name}/{'_'.join(key_path)}.pkl"
         )
 
     @classmethod
@@ -136,7 +135,6 @@ def run_simulation(
         preds = model.fit(X, y).predict(X)
         beta_hat = model.coef_
         rmse = np.sqrt(mean_squared_error(beta, beta_hat))
-        r2 = r2_score(y, preds)
 
         name = _get_estimator_name(estimator_class)  # just to validate
 
@@ -158,7 +156,7 @@ def run_simulation(
             "predictions": preds,
             "beta_hat": beta_hat,
             "rmse": rmse,
-            "r2": r2,
+            "mse": rmse**2,
             "true_beta": beta,
             "se_beta": se_beta,
             "N": N,
