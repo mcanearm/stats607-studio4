@@ -18,7 +18,7 @@ import multiprocessing as mp
 from multiprocessing import Pool
 from pathlib import Path
 
-from sklearn.linear_model import HuberRegressor, LinearRegression, QuantileRegressor, Ridge
+from sklearn.linear_model import Ridge
 import numpy as np
 import pandas as pd
 
@@ -96,8 +96,7 @@ if __name__ == "__main__":
         for ar in aspect_ratios:
             p = int(ar * 200)
             scenarios.append((
-                partial(Ridge, alpha=1e-9),
-                p, 
+                partial(Ridge, alpha=1e-10), 
                 degrees_of_freedom, 
                 ar, 
                 rho, 
