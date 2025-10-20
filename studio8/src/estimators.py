@@ -5,7 +5,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 from scipy import stats
-from sklearn.linear_model import HuberRegressor, LinearRegression, QuantileRegressor
+from sklearn.linear_model import HuberRegressor, LinearRegression, QuantileRegressor, Ridge
 from sklearn.metrics import mean_squared_error, r2_score
 
 from studio8.src.simulation import generate_data
@@ -16,6 +16,7 @@ def _get_estimator_name(estimator_class):
         LinearRegression: "OLS",
         QuantileRegressor: "QR",
         HuberRegressor: "Huber",
+        Ridge: "OLS",
     }
     try:
         return estimator_name[estimator_class]
