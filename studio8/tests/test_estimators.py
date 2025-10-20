@@ -22,6 +22,10 @@ def sample_data():
     return sim_result
 
 
+def test_filename(sample_data):
+    assert sample_data.filename
+
+
 def test_partial_regressor():
     p = 5
     sim_result = run_simulation(

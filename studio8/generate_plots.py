@@ -1,7 +1,7 @@
 """Generate plots"""
 import argparse
 
-from studio7.src.plot_function import (
+from studio8.src.plot_function import (
     plot_grid,
     load_data,
     plot_boxplot,

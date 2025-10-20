@@ -5,8 +5,13 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 from scipy import stats
-from sklearn.linear_model import HuberRegressor, LinearRegression, QuantileRegressor
-from sklearn.metrics import mean_squared_error, r2_score
+from sklearn.linear_model import (
+    HuberRegressor,
+    LinearRegression,
+    QuantileRegressor,
+    Ridge,
+)
+from sklearn.metrics import mean_squared_error
 
 from studio8.src.simulation import generate_data
 
@@ -16,6 +21,7 @@ def _get_estimator_name(estimator_class):
         LinearRegression: "OLS",
         QuantileRegressor: "QR",
         HuberRegressor: "Huber",
+        Ridge: "OLS",
     }
     try:
         return estimator_name[estimator_class]
@@ -29,8 +35,70 @@ def _get_estimator_name(estimator_class):
             )
 
 
-class SimulationResult(object):
+def ridge_sigma2_and_se(model: Ridge, X, y, sample_weight=None):
+    """
+    Given a fitted sklearn Ridge model, return:
+      sigma2_hat, df_eff, rss, se_beta  (SEs aligned to model.coef_)
+    Works for p > N. No refit; uses SVD of centered design.
+    """
+    y = np.asarray(y).ravel()
+    y_hat = model.predict(X)
+    resid = y - y_hat
 
+    # (1) RSS
+    if sample_weight is None:
+        rss = float(resid @ resid)
+        Xc = X.copy()
+        if getattr(model, "fit_intercept", True):
+            X_offset = getattr(model, "_X_offset", np.mean(X, axis=0))
+            Xc = Xc - X_offset
+    else:
+        w = np.asarray(sample_weight).ravel()
+        sw = np.sqrt(w)
+        rss = float((resid * sw) @ (resid * sw))
+        Xc = X.copy()
+        if getattr(model, "fit_intercept", True):
+            # weighted centering: subtract weighted mean
+            X_offset = getattr(
+                model, "_X_offset", (sw[:, None] * X).sum(axis=0) / sw.sum()
+            )
+            Xc = Xc - X_offset
+        Xc = sw[:, None] * Xc  # apply weights to design for SVD/df
+
+    # (2) SVD of centered (and weighted) X
+    # Xc = U S V^T; shapes: U(N×r), S(r,), V(p×r), r = min(N, p)
+    # We only need S and V (no need to compute U)
+    s = np.linalg.svd(Xc, full_matrices=False, compute_uv=False)
+    # To get V we need the full SVD once; compute with UV but it's cheap relative to p,N
+    U, S, Vt = np.linalg.svd(Xc, full_matrices=False)
+    V = Vt.T  # p×r
+
+    alpha = float(model.intercept_)
+
+    # (3) df_eff = sum s^2/(s^2+alpha)
+    s2 = S**2
+    df_eff = float(np.sum(s2 / (s2 + alpha)))
+
+    # (4) sigma2_hat = RSS / (N - df_eff)
+    N = X.shape[0]
+    denom = N - df_eff
+    # guard very small/negative denominators (return inf rather than crash)
+    if denom <= 1e-12:
+        sigma2_hat = np.inf
+    else:
+        sigma2_hat = rss / denom
+
+    # (5) Var(beta_hat) diag via V and s:
+    # Cov = sigma^2 * V diag(s^2/(s^2+alpha)^2) V^T
+    w = s2 / (s2 + alpha) ** 2  # length r
+    # diag(Cov) = sigma^2 * sum_k w_k * V_{jk}^2
+    diag_cov = sigma2_hat * (V**2 @ w)  # shape (p,)
+    se_beta = np.sqrt(diag_cov)
+
+    return sigma2_hat, df_eff, rss, se_beta
+
+
+class SimulationResult(object):
     def __init__(self, estimator, result_set) -> None:
         self.name = _get_estimator_name(estimator)
         self._df = pd.DataFrame(result_set)
@@ -53,12 +121,11 @@ class SimulationResult(object):
             return out
 
     def __str__(self):
-        start_text = f"{'-' * 40}\nSim Result: {self.name}\nN_sim: {len(self.r2)}"
+        start_text = f"{'-' * 40}\nSim Result: {self.name}\nN_sim: {len(self.rmse)}"
         param_text = f"p: {self.p[0]}, aspect_ratio: {self.aspect_ratio[0]}, degrees_of_freedom: {self.degrees_of_freedom[0]}, SNR: {self.SNR[0]}, rho: {self.rho[0]}"
         rmse_ci_str = f"RMSE: {self._ci_string(self.rmse)}"
-        r2_ci_str = f"R2: {self._ci_string(self.r2)}"
         coverage = f"Coverage (95%): {self.calculate_coverage()}"
-        str_components = [start_text, param_text, rmse_ci_str, r2_ci_str, coverage]
+        str_components = [start_text, param_text, rmse_ci_str, coverage]
         text_out = "\n".join(str_components)
         text_out += f"\n{'-' * 40}"
 
@@ -70,9 +137,9 @@ class SimulationResult(object):
 
     def calculate_coverage(self, alpha=0.05):
         """Calculate coverage of the true values according to alpha using quantiles"""
-        beta_hat_estimates = self.beta_hat
-        se_betas = self.se_beta
-        true_beta = self.true_beta
+        beta_hat_estimates = self["beta_hat"]
+        se_betas = self["se_beta"]
+        true_beta = self["true_beta"]
 
         t_stat = stats.t.ppf(1 - alpha / 2, df=self.N - 1)
         lower = beta_hat_estimates - t_stat[:, None] * se_betas
@@ -91,17 +158,18 @@ class SimulationResult(object):
     def filename(self):
         return self._construct_filepath(
             self.name,
-            self.p[0],
-            self.SNR[0],
-            self.degrees_of_freedom[0],
-            self.aspect_ratio[0],
-            self.rho[0],
+            p=self.p[0],
+            # df=self.degrees_of_freedom[0],
+            ar=self.aspect_ratio[0],
+            # rho=self.rho[0],
+            # sigma2=self.sigma2[0]
         )
 
     @classmethod
-    def _construct_filepath(cls, name, p, snr, df, ar, rho):
+    def _construct_filepath(cls, name, **name_params):
+        file_components = [f"{k}={v}" for k, v in name_params.items()]
         return Path(
-            f"{name}/p={p:0.0f}_snr={snr:0.0f}_df={df:0.0f}_ar={ar:0.2f}_rho={rho:0.2f}.pkl"
+            f"{name}/{'_'.join(file_components)}.pkl"
         )
 
     @classmethod
@@ -129,21 +197,26 @@ def run_simulation(
             rho = np.nan
         X, y, beta = generate_data(rng=rng, **data_params)
         model = estimator_class()
-        preds = model.fit(X, y).predict(X)
+        model.fit(X, y)
+        preds = model.predict(X)
         beta_hat = model.coef_
-        rmse = np.sqrt(mean_squared_error(beta, beta_hat))
-        r2 = r2_score(y, preds)
+        mse = mean_squared_error(beta, beta_hat)
+        rmse = np.sqrt(mse)
+        name = _get_estimator_name(estimator_class)
+        N, p = X.shape
 
-        name = _get_estimator_name(estimator_class)  # just to validate
-
-        N = X.shape[0]
-        sigma_hat = np.sum((y - preds) ** 2) / (N - p)
-
-        xtx_inv = np.linalg.pinv(X.T @ X)
-        se_beta = np.sqrt(sigma_hat * np.diagonal(xtx_inv))
+        try:
+            resid = y - preds
+            rss = float(resid @ resid)
+            denom = max(1, N - p)  # guard to avoid division by zero/neg
+            sigma2_hat = rss / denom
+            xtx_inv = np.linalg.pinv(X.T @ X)
+            se_beta = np.sqrt(np.clip(np.diag(xtx_inv), 0, np.inf) * sigma2_hat)
+        except np.linalg.LinAlgError:
+            sigma2_hat, df_eff, rss, se_beta = ridge_sigma2_and_se(model, X, y)
 
         alpha = 0.05
-        tcrit = stats.t.ppf(1 - alpha/2, df=N - 1)
+        tcrit = stats.t.ppf(1 - alpha / 2, df=N - 1)
         ci_lower = beta_hat - tcrit * se_beta
         ci_upper = beta_hat + tcrit * se_beta
         ci_width = ci_upper - ci_lower
@@ -154,7 +227,7 @@ def run_simulation(
             "predictions": preds,
             "beta_hat": beta_hat,
             "rmse": rmse,
-            "r2": r2,
+            "mse": mse,
             "true_beta": beta,
             "se_beta": se_beta,
             "N": N,

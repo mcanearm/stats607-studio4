@@ -1,8 +1,8 @@
 import pytest
 import numpy as np
-from studio7.src.simulation import generate_data
-from studio7.src.estimators import run_simulation
-from sklearn.linear_model import LinearRegression, QuantileRegressor, HuberRegressor
+from studio8.src.simulation import generate_data
+from studio8.src.estimators import run_simulation, SimulationResult
+from sklearn.linear_model import LinearRegression, QuantileRegressor, HuberRegressor, Ridge
 from functools import partial
 
 
@@ -21,8 +21,8 @@ def test_data_generation(p):
 
 @pytest.mark.parametrize(
     "regressor",
-    [LinearRegression, partial(QuantileRegressor, alpha=0), HuberRegressor],
-    ids=["OLS", "QR", "Huber"],
+    [LinearRegression, partial(QuantileRegressor, alpha=0), HuberRegressor, partial(Ridge, alpha=1e-10)],
+    ids=["OLS", "QR", "Huber", "OLS(Ridge)"],
 )
 @pytest.mark.parametrize("p", [1, 5, 10, 20], ids=["p=1", "p=5", "p=10", "p=20"])
 def test_simulation_run(regressor, p):
@@ -38,6 +38,7 @@ def test_simulation_run(regressor, p):
     assert sim_result
     assert sim_result.name in ["OLS", "QR", "Huber"]
     assert (sim_result.p == p).all()
+    assert isinstance(sim_result, SimulationResult)
 
 
 def test_simulation_print():
@@ -51,3 +52,18 @@ def test_simulation_print():
         SNR=2.0,
     )
     print(sim_result)
+
+
+@pytest.mark.parametrize("ar", [0.5, 1.5], ids=["ar=0.5", "ar=1.5"])
+def test_simulation_p_over_n(ar):
+    p = 100
+    sim_result = run_simulation(
+        partial(Ridge, alpha=1e-10),
+        n_sim=5,
+        p=p,
+        aspect_ratio=ar,
+        covariance=np.identity(p),
+        degrees_of_freedom=100,
+        SNR=2.0,
+    )
+    assert sim_result
