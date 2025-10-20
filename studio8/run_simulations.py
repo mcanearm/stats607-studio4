@@ -97,6 +97,7 @@ if __name__ == "__main__":
             p = int(ar * 200)
             scenarios.append((
                 partial(Ridge, alpha=1e-10), 
+                p,
                 degrees_of_freedom, 
                 ar, 
                 rho, 
