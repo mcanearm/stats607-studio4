@@ -121,7 +121,8 @@ if __name__ == "__main__":
     np.random.shuffle(scenarios)
     
     # Run simulations in parallel using 8 processes
-    pool = Pool(8)
-    results = pool.map(run_simulation_in_parallel, scenarios)
-    pool.close()
-    pool.join()
+    with Pool(processes=8) as pool:
+        results = pool.map(run_simulation_in_parallel, scenarios)
+
+    out = pd.DataFrame(results)
+    out.to_csv("studio8/sim_outputs/simulation_summary.csv", index=False)

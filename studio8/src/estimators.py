@@ -1,6 +1,7 @@
 import pickle as pkl
 import textwrap
 from pathlib import Path
+import warnings
 
 import numpy as np
 import pandas as pd
@@ -138,17 +139,26 @@ def run_simulation(
 
         name = _get_estimator_name(estimator_class)  # just to validate
 
-        N = X.shape[0]
-        sigma_hat = np.sum((y - preds) ** 2) / (N - p)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", RuntimeWarning)
+            try:
+                N = X.shape[0]
+                sigma_hat = np.sum((y - preds) ** 2) / (N - p)
 
-        xtx_inv = np.linalg.pinv(X.T @ X)
-        se_beta = np.sqrt(sigma_hat * np.diagonal(xtx_inv))
+                xtx_inv = np.linalg.pinv(X.T @ X)
+                se_beta = np.sqrt(sigma_hat * np.diagonal(xtx_inv))
 
-        alpha = 0.05
-        tcrit = stats.t.ppf(1 - alpha/2, df=N - 1)
-        ci_lower = beta_hat - tcrit * se_beta
-        ci_upper = beta_hat + tcrit * se_beta
-        ci_width = ci_upper - ci_lower
+                alpha = 0.05
+                tcrit = stats.t.ppf(1 - alpha/2, df=N - 1)
+                ci_lower = beta_hat - tcrit * se_beta
+                ci_upper = beta_hat + tcrit * se_beta
+                ci_width = ci_upper - ci_lower
+            except RuntimeWarning:
+                se_beta = np.full_like(beta_hat, np.nan)
+                ci_lower = np.full_like(beta_hat, np.nan)
+                ci_upper = np.full_like(beta_hat, np.nan)
+                ci_width = np.full_like(beta_hat, np.nan)
+                sigma_hat = np.nan
 
         out = {
             "name": name,
