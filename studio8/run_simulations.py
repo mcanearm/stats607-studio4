@@ -46,7 +46,7 @@ def run_simulation_in_parallel(scenario):
         filename = SimulationResult._construct_filepath(
             reg_name, p, SNR, degrees_of_freedom, aspect_ratio, scenario[3]
         )
-        output_dir = Path("studio7/sim_outputs/")
+        output_dir = Path("studio8/sim_outputs/")
         # Skip simulation if output already exists
         if (output_dir / filename).exists():
             logging.info(
@@ -89,10 +89,11 @@ if __name__ == "__main__":
     # Define scenario parameters
     scenario_configs = [
         (1, np.geomspace(0.1, 10.0, num=5000)),
-        (50, np.geomspace(0.1, 10.0, num=500)),
-        (1000, np.geomspace(0.1, 10.0, num=5))
+        (50, np.geomspace(0.1, 10.0, num=100)),
+        (1000, np.array([0.2, 0.5, 0.8, 2.0, 5.0]))
     ]
-    
+
+   # we may not need these parameters 
     degrees_of_freedom = 5
     SNR = 5
     rho = 0
