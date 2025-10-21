@@ -691,7 +691,7 @@ def expected_value_beta_rmse(gamma, sigma2=1, r2=5):
     return np.where(
         gamma < 1,
         sigma2 * gamma / (1 - gamma),
-        r2 * (1 - 1 / gamma) + sigma2 / (1 - gamma),
+        r2 * (1 - 1 / gamma) + sigma2 / (gamma - 1),
     )
 
 
