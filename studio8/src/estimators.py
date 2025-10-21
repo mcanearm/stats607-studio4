@@ -125,53 +125,38 @@ def run_simulation(
         rng = np.random.default_rng()
 
     def _run_sim():
-        p = data_params["p"]  # this should error if p not provided
         try:
             # get any off diagonal term, they should be the same in our setup
             rho = float(data_params["covariance"][0, 1])
         except IndexError:
             rho = np.nan
         X, y, beta = generate_data(rng=rng, **data_params)
-        model = estimator_class()
-        preds = model.fit(X, y).predict(X)
-        beta_hat = model.coef_
-        rmse = np.sqrt(mean_squared_error(beta, beta_hat))
-        r2 = r2_score(y, preds)
+
+        if X.shape[0] < X.shape[1]:
+            # use pseudo-inverse for p>n case
+            beta_hat = np.linalg.pinv(X) @ y
+            preds = X @ beta_hat
+            model = None  # placeholder
+        else:
+            model = estimator_class()
+            preds = model.fit(X, y).predict(X)
+            beta_hat = model.coef_
+        # model = estimator_class()
+        # preds = model.fit(X, y).predict(X)
+        mse = mean_squared_error(beta, beta_hat)
 
         name = _get_estimator_name(estimator_class)  # just to validate
 
         N = X.shape[0]
-        # I‘ve change this sigma hat to fit for the ridgeless regression
-        # For ridgeless regression, the estimator for sigma^2 is different depending on if p < n or p >= n
-        if p < N:
-            sigma_hat = np.sum((y - preds) ** 2) / (N - p)
-        else:
-            sigma_hat = np.sum((y - preds) ** 2) / N
-
-        xtx_inv = np.linalg.pinv(X.T @ X)
-        se_beta = np.sqrt(sigma_hat * np.diagonal(xtx_inv))
-
-        alpha = 0.05
-        tcrit = stats.t.ppf(1 - alpha/2, df=N - 1)
-        ci_lower = beta_hat - tcrit * se_beta
-        ci_upper = beta_hat + tcrit * se_beta
-        ci_width = ci_upper - ci_lower
 
         out = {
             "name": name,
             "random_state": rng,
             "predictions": preds,
-            "beta_hat": beta_hat,
-            "rmse": rmse,
-            "r2": r2,
-            "true_beta": beta,
-            "se_beta": se_beta,
+            "mse": mse,
             "N": N,
-            "rho": rho,
+            "p": X.shape[1],
             "rng": rng,
-            "ci_lower": ci_lower,
-            "ci_upper": ci_upper,
-            "ci_width": ci_width,
             **data_params,
         }
         return out

@@ -98,8 +98,10 @@ def generate_data(
     X = generate_covariates(p, aspect_ratio, covariance, rng=rng)
 
     n = math.ceil(p / aspect_ratio)
-    signal_var = np.var(X @ beta)
-    sigma2 = signal_var / SNR
+    # signal_var = np.var(X @ beta)
+    # sigma2 = signal_var / SNR
+    sigma2 = 1
+    
 
     sigma = math.sqrt(sigma2)
 
