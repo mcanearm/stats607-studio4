@@ -24,7 +24,6 @@ import numpy as np
 import pandas as pd
 
 from studio8.src.estimators import run_simulation, _get_estimator_name, SimulationResult
-from studio8.src.simulation import generate_covariance_structure
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -32,28 +31,22 @@ logger = logging.getLogger(__name__)
 
 def run_simulation_in_parallel(scenario):
     # Set dimension
-    regressor = scenario[0]
-    p = scenario[1]
-    degrees_of_freedom = scenario[2]
-    aspect_ratio = scenario[3]
-    rho = scenario[4]
-    SNR = scenario[5]
-    n_sim = scenario[6]
-    save = scenario[7]
-    # Generate covariance structure based on rho and p
-    covariance = generate_covariance_structure(rho, p)
+    regressor, p, aspect_ratio, n_sim, save = scenario
+    covariance = np.eye(p)
     reg_name = _get_estimator_name(regressor)
+    append_msg = ", ".join([f"{k}: {v}" for k, v in zip(["p", "ar", "n_sim"], [p, aspect_ratio, n_sim])])
+    
 
     # Determine filename for simulation output
     if save is True:
         filename = SimulationResult._construct_filepath(
-            reg_name, p, SNR, degrees_of_freedom, aspect_ratio, scenario[3]
+            reg_name, p=p, aspect_ratio=aspect_ratio, n_sim=n_sim
         )
         output_dir = Path("studio8/sim_outputs/")
         # Skip simulation if output already exists
         if (output_dir / filename).exists():
             logging.info(
-                f"Skipping scenario - df: {degrees_of_freedom}, ar: {aspect_ratio}"
+                f"Skipping scenario - {append_msg}"
             )
             return
 
@@ -64,13 +57,11 @@ def run_simulation_in_parallel(scenario):
             p=p,
             aspect_ratio=aspect_ratio,
             covariance=covariance,
-            degrees_of_freedom=degrees_of_freedom,
-            SNR=SNR,
             rsq=5.0,  # rsq for sample beta generation
             noise_distribution="normal"
         )
         logging.info(
-            f"Completed scenario - df: {degrees_of_freedom}, ar: {aspect_ratio}, regressor: {reg_name}"
+            f"Completed scenario - {append_msg}"
         )
         if save:
             sim_out.save()
@@ -83,7 +74,7 @@ def run_simulation_in_parallel(scenario):
             }
             # return sim_out._df
     except Exception as e:
-        err_msg = f"Error in scenario - df: {degrees_of_freedom}, ar: {aspect_ratio}, regressor: {reg_name}\nError: {e}"
+        err_msg = f"Error in scenario - {append_msg} -- {e}"
         logging.error(err_msg)
     # Ensure all output is flushed to avoid deadlocks
     sys.stdout.flush()
@@ -99,15 +90,10 @@ if __name__ == "__main__":
 
     # Define scenario parameters
     scenario_configs = [
-        (50, np.geomspace(0.1, 10.0, num=100)),
-        # (1000, np.array([0.2, 0.5, 0.8, 2.0, 5.0])),
-        (1, np.geomspace(0.1, 10.0, num=5000)),
+        # (1, np.geomspace(0.1, 10.0, num=5000)),
+        # (50, np.geomspace(0.1, 10.0, num=100)),
+        (1000, np.array([0.2, 0.5, 0.8, 2.0, 5.0])),
     ]
-
-    # we may not need these parameters
-    degrees_of_freedom = 5
-    SNR = 5
-    rho = 0
 
     # Generate all combinations of scenarios
     for n_sim, aspect_ratios in scenario_configs:
@@ -119,21 +105,18 @@ if __name__ == "__main__":
                 (
                     partial(Ridge, alpha=1e-10),
                     p,
-                    degrees_of_freedom,
                     ar,
-                    rho,
-                    SNR,
                     n_sim,
                     False,
                 )
             )
         with Pool(8) as pool:
-            results = pool.map(run_simulation_in_parallel, scenarios)
+            results = list(pool.imap_unordered(run_simulation_in_parallel, scenarios))
         # results = list(map(run_simulation_in_parallel, scenarios))
         output_dir = Path("studio8/sim_outputs/")
         output_dir.mkdir(parents=True, exist_ok=True)
         (output := pd.DataFrame(results)).to_csv(
             output_dir / f"simulation_results_fixed_nsim_{n_sim}.csv", index=False
         )
-        with open(output_dir/ f"simulation_results_fixec_nsim_{n_sim}.pkl", "wb") as f:
+        with open(output_dir/ f"simulation_results_fixed_nsim_{n_sim}.pkl", "wb") as f:
             pkl.dump(output, f)

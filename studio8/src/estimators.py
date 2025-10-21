@@ -118,19 +118,19 @@ class SimulationResult(object):
 
     @property
     def filename(self):
+        # TODO: this is bugged, but we're not saving anymore so it's ok for now
         return self._construct_filepath(
             self.name,
-            self.p[0],
-            self.SNR[0],
-            self.degrees_of_freedom[0],
-            self.aspect_ratio[0],
-            self.rho[0],
+            p=self.p[0],
+            ar=self.aspect_ratio[0],
+            rho=self.rho[0],
         )
 
     @classmethod
-    def _construct_filepath(cls, name, p, snr, df, ar, rho):
+    def _construct_filepath(cls, name, **kwargs):
+        fp_items = [f"{key}={value}" for key, value in kwargs.items()]
         return Path(
-            f"{name}/p={p:0.0f}_snr={snr:0.0f}_df={df:0.0f}_ar={ar:0.2f}_rho={rho:0.2f}.pkl"
+            f"{name}/{'_'.join(fp_items)}.pkl"
         )
 
     @classmethod
