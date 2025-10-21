@@ -141,7 +141,12 @@ def run_simulation(
         name = _get_estimator_name(estimator_class)  # just to validate
 
         N = X.shape[0]
-        sigma_hat = np.sum((y - preds) ** 2) / (N - p)
+        # I‘ve change this sigma hat to fit for the ridgeless regression
+        # For ridgeless regression, the estimator for sigma^2 is different depending on if p < n or p >= n
+        if p < N:
+            sigma_hat = np.sum((y - preds) ** 2) / (N - p)
+        else:
+            sigma_hat = np.sum((y - preds) ** 2) / N
 
         xtx_inv = np.linalg.pinv(X.T @ X)
         se_beta = np.sqrt(sigma_hat * np.diagonal(xtx_inv))
