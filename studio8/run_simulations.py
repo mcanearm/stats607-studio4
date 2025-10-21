@@ -29,7 +29,7 @@ logging.basicConfig(level=logging.INFO)
 
 def run_simulation_in_parallel(scenario):
     # Set dimension
-    p = 5
+    
     regressor = scenario[0]
     degrees_of_freedom = scenario[1]
     aspect_ratio = scenario[2]
@@ -37,6 +37,8 @@ def run_simulation_in_parallel(scenario):
     SNR = scenario[4]
     n_sim = scenario[5]
     save = scenario[6]
+
+    p = int(aspect_ratio * 200)
     # Generate covariance structure based on rho and p
     covariance = generate_covariance_structure(rho, p)
     reg_name = _get_estimator_name(regressor)
@@ -79,6 +81,7 @@ def run_simulation_in_parallel(scenario):
     sys.stderr.flush()
     
     
+    
 # Example usage
 if __name__ == "__main__":
     # Set multiprocessing start method for compatibility
@@ -110,7 +113,7 @@ if __name__ == "__main__":
                 rho, 
                 SNR,
                 n_sim,
-                False,
+                True,
             ))    
     
     # Shuffle the scenarios for more balanced parallelization
