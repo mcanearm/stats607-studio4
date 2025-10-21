@@ -66,11 +66,13 @@ def run_simulation_in_parallel(scenario):
             covariance=covariance,
             degrees_of_freedom=degrees_of_freedom,
             SNR=SNR,
+            rsq=5.0,  # rsq for sample beta generation
+            noise_distribution="normal"
         )
         logging.info(
-            f"Completed scenario - df: {degrees_of_freedom}, ar: {aspect_ratio}, corr: {scenario[3]}, snr: {SNR}, regressor: {reg_name}"
+            f"Completed scenario - df: {degrees_of_freedom}, ar: {aspect_ratio}, regressor: {reg_name}"
         )
-        if save is True:
+        if save:
             sim_out.save()
         else:
             return {
@@ -81,7 +83,7 @@ def run_simulation_in_parallel(scenario):
             }
             # return sim_out._df
     except Exception as e:
-        err_msg = f"Error in scenario - df: {degrees_of_freedom}, ar: {aspect_ratio}, corr: {scenario[3]}, snr: {SNR}, regressor: {reg_name}\nError: {e}"
+        err_msg = f"Error in scenario - df: {degrees_of_freedom}, ar: {aspect_ratio}, regressor: {reg_name}\nError: {e}"
         logging.error(err_msg)
     # Ensure all output is flushed to avoid deadlocks
     sys.stdout.flush()
@@ -125,12 +127,13 @@ if __name__ == "__main__":
                     False,
                 )
             )
-        # with Pool(1) as pool:
-        #     results = pool.map(run_simulation_in_parallel, scenarios)
-        results = list(map(run_simulation_in_parallel, scenarios[-1:]))
+        with Pool(8) as pool:
+            results = pool.map(run_simulation_in_parallel, scenarios)
+        # results = list(map(run_simulation_in_parallel, scenarios))
+        output_dir = Path("studio8/sim_outputs/")
+        output_dir.mkdir(parents=True, exist_ok=True)
         (output := pd.DataFrame(results)).to_csv(
-            f"profiling_results_nsim_{n_sim}.csv", index=False
+            output_dir / f"simulation_results_fixed_nsim_{n_sim}.csv", index=False
         )
-        output.to_csv(f"profiling_results_nsim_{n_sim}.csv", index=False)
-        with open(f"profiling_results_nsim_{n_sim}.pkl", "wb") as f:
+        with open(output_dir/ f"simulation_results_fixec_nsim_{n_sim}.pkl", "wb") as f:
             pkl.dump(output, f)

@@ -693,16 +693,3 @@ def expected_value_beta_rmse(gamma, sigma2=1, r2=5):
         sigma2 * gamma / (1 - gamma),
         r2 * (1 - 1 / gamma) + sigma2 / (gamma - 1),
     )
-
-
-# fig, ax = plt.subplots()
-# g_vals_1 = np.linspace(0.01, 0.99, 100)
-# g_vals_2 = np.linspace(1.01, 2, 100)
-
-# yg1 = expected_value_beta_rmse(g_vals_1)
-# yg2 = expected_value_beta_rmse(g_vals_2)
-
-# ax.plot(g_vals_1, expected_value_beta_rmse(g_vals_1), color="black")
-# ax.plot(g_vals_2, expected_value_beta_rmse(g_vals_2), color="black")
-# ax.vlines(1, ymin=yg2.min(), ymax=yg1.max(), colors="red", linestyles="dashed")
-# plt.show()

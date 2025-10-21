@@ -18,12 +18,13 @@ n_sim_1 = mse_values[(mse_values["n_sim"] == 1)][["mse", "gamma", "p"]]
 n_sim_50 = mse_values[(mse_values["n_sim"] == 50)][["mse", "gamma", "p"]]
 n_sim_1000 = mse_values[(mse_values["n_sim"] == 1000)][["mse", "gamma", "p"]]
 
-plt.plot(n_sim_1["gamma"], n_sim_1["p"]*n_sim_1["mse"], 'o', alpha=0.05)
-plt.plot(n_sim_50["gamma"], n_sim_50["p"]*n_sim_50["mse"], 'o', alpha=0.5)
-plt.plot(n_sim_1000["gamma"], n_sim_1000["p"]*n_sim_1000["mse"], 'o', alpha=1.0)
-plt.plot(gamma1, expected_value_beta_rmse(gamma1), color="black")
-plt.plot(gamma2, expected_value_beta_rmse(gamma2), color="black")
-plt.ylim(0, 10)
+fig, ax = plt.subplots(figsize=(8, 6), ncols=1, nrows=3, sharex=True, sharey=True)
+for a, ds in zip(ax, [n_sim_1, n_sim_50, n_sim_1000]):
+    a.plot(ds["gamma"], ds["p"]*ds["mse"], 'o', alpha=0.05)
+    a.plot(gamma1, expected_value_beta_rmse(gamma1), color="black")
+    a.plot(gamma2, expected_value_beta_rmse(gamma2), color="black")
+    # set y limit on each subplot
+    a.set_ylim(0, 10)
 
 plt.savefig("studio8/figures/mse_vs_aspect_ratio.png")
 plt.show()

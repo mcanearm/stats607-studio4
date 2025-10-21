@@ -5,10 +5,34 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 from scipy import stats
-from sklearn.linear_model import HuberRegressor, LinearRegression, QuantileRegressor, Ridge
+from sklearn.linear_model import (
+    HuberRegressor,
+    LinearRegression,
+    QuantileRegressor,
+    Ridge,
+)
 from sklearn.metrics import mean_squared_error, r2_score
 
 from studio8.src.simulation import generate_data
+
+
+class RidgelessRegression(object):
+    def __init__(self) -> None:
+        self.intercept_ = None
+        self.coef_ = None
+
+    def fit(self, X, y):
+        X_wi = np.hstack([np.ones((X.shape[0], 1)), X])
+        if X_wi.shape[0] < X_wi.shape[1]:
+            beta_hat = X_wi.T @ np.linalg.inv(X_wi @ X_wi.T) @ y
+        else:
+            beta_hat = np.linalg.inv(X_wi.T @ X_wi) @ (X_wi.T @ y)
+        self.coef_ = beta_hat[1:]
+        self.intercept_ = beta_hat[0]
+        return self
+
+    def predict(self, X):
+        return self.intercept_ + X @ self.coef_
 
 
 def _get_estimator_name(estimator_class):
@@ -17,6 +41,7 @@ def _get_estimator_name(estimator_class):
         QuantileRegressor: "QR",
         HuberRegressor: "Huber",
         Ridge: "OLS",
+        RidgelessRegression: "Ridgeless",
     }
     try:
         return estimator_name[estimator_class]
@@ -125,34 +150,18 @@ def run_simulation(
         rng = np.random.default_rng()
 
     def _run_sim():
-        try:
-            # get any off diagonal term, they should be the same in our setup
-            rho = float(data_params["covariance"][0, 1])
-        except IndexError:
-            rho = np.nan
         X, y, beta = generate_data(rng=rng, **data_params)
-
-        if X.shape[0] < X.shape[1]:
-            # use pseudo-inverse for p>n case
-            beta_hat = np.linalg.pinv(X) @ y
-            preds = X @ beta_hat
-            model = None  # placeholder
-        else:
-            model = estimator_class()
-            preds = model.fit(X, y).predict(X)
-            beta_hat = model.coef_
-        # model = estimator_class()
-        # preds = model.fit(X, y).predict(X)
+        model = estimator_class()
+        model.fit(X, y)
+        beta_hat = model.coef_
         mse = mean_squared_error(beta, beta_hat)
-
         name = _get_estimator_name(estimator_class)  # just to validate
-
         N = X.shape[0]
 
         out = {
             "name": name,
             "random_state": rng,
-            "predictions": preds,
+            # "predictions": preds,
             "mse": mse,
             "N": N,
             "p": X.shape[1],
